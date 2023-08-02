@@ -1,0 +1,55 @@
+#!/bin/sh
+
+music_dir="$HOME/Music"
+previewdir="$HOME/ncmpcpp/previews"
+mpc_file=$(mpc --format "%file%" current)
+filename=$music_dir/${mpc_file##*:}
+
+#Year variable, don't change this
+date="$(mpc --format '%date%' current)"
+
+# If the audio file doesn't contain a year in the metadata, overwrite the variable as nothing and don't show the parentheses so it doesn't look ugly
+if [ -z "$date" ]; then
+    date=""
+else
+    date="($date)"
+fi
+
+#The purpose of this variable is to set each album as unique as possible
+#For example, if you had Weezer self-titled albums with the same album name in their metadata, it should be able to differentiate them to show the correct album cover because they have a different metadata for the year and artist. If you have proper metadata for every album then it should work as expected
+# Please note that if you don't need this, you can just remove the $date settings. In fact, you could just set this to your liking and make it more verbose, but that's on you.
+fix=$(mpc --format "%album% $date" current)
+
+# Uncomment this to not use SHA256
+#previewname="$previewdir/$(mpc --format %album% current).png"
+
+# Comment this to not use SHA256
+# In fact, you could just replace SHA256 with another hash, like MD5 or SHA512
+previewname=$previewdir/$(echo $fix | sha256sum | cut -d' ' -f1).png
+
+# If the album cover doesn't load on the notification, it might be best to disable MD5
+# However one side effect is that you can't save album covers with names that have quirky characters
+# This mainly happens to Mopidy users.
+
+#Debugging purposes
+#echo 'Preview Dir: '"$previewdir"
+#echo 'Filename: '"$filename"
+#echo 'Preview Name: '"$previewname"
+
+# Metadata
+check="$(mpc --format '%title%' current)"
+title="$(echo -e "\uf04b") $(mpc --format '%title%' current)"
+subtitle="$(mpc --format '%artist% \n%album%' current)"
+
+# Comment [ -e "$previewname" ] || if you want the album coverto be constantly overwritten by FFMPEG when it yanks it. Although it makes it very slow and I don't recommend changing it
+[ -e "$previewname" ] || 
+	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
+
+# notify-send -r 27072 "$(echo -e "\uf04b") $(mpc --format '%title%' current)" "$(mpc --format '%artist% \n%album% (%date%)' current)" -i "$previewname
+
+# Checks if MPD is completely stopped
+if [ -z "$check" ]; then
+	notify-send -r 27072 "$(echo -e "\uf04d") Stopped"
+else
+    notify-send -r 27072 "$title" "$subtitle $date" -i "$previewname"
+fi
