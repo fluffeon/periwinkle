@@ -1,5 +1,9 @@
 #!/bin/sh
 
+function cleanoutput() {
+	sed "/^OK.*$/d"
+}
+
 MPD_HOST="localhost"
 MPD_PORT="6600"
 
@@ -23,6 +27,9 @@ function help()
 	echo "	menu - Shows the dmenu prompt directly"
 	echo "	notify - Only shows a notification without actions" 
 	echo ""
+	echo "Debug commands"
+	echo "	direct - Interacts with the MPD server directly (advanced)"
+	echo ""
 	echo "For now this client is a bit basic and stuff, but"
 	echo "I'm gonna keep developing it and it will have"
 	echo "more features in the future."
@@ -41,6 +48,11 @@ function mpdcom {
 # Save the output to a variable so it isn't called everytime, improving performance
 function currentsong() {
 	stats="$(mpdcom currentsong | tr -d '\r')"
+	mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
+	filename=$music_dir/${mpc_file##*:}
+}
+
+function setmetadata() {
 	title=$(echo $stats | grep -oP '(?<=Title:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
 	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ {print $2}' | awk '{$1=$1};1')"
 	album=$(echo $stats | grep -oP '(?<=Album:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
@@ -55,11 +67,10 @@ function currentsong() {
 
 function ffmpeg_routine() {
 	# Comment [ -e "$previewname" ] || if you want the album cover to be constantly overwritten by FFMPEG when it yanks it. Although it makes it very slow and I don't recommend changing it
+	previewname=$previewdir/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
 	[ -e "$previewname" ] || 
 	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
 }
-
-currentsong
 
 # Settings
 music_dir="$HOME/Music"
@@ -106,31 +117,89 @@ previewname=$previewdir/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
 #echo 'Album: '"$album"
 #echo 'Date: '"$date"
 
-ffmpeg_routine
-
 # [ -e "$previewname" ] || 
 #	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
 
 # notify-send -r 27072 "$(echo -e "\uf04b") $(mpc --format '%title%' current)" "$(mpc --format '%artist% \n%album% (%date%)' current)" -i "$previewname
+
+function mpdfunc()
+{
+    arglist=$1
+ 
+    [ "$2" != "" ] &&                   arglist="$arglist $2"
+    [ "$3" != "" ] && [ "$4" = "" ]  && arglist="$arglist \"$3\""
+    [ "$3" != "" ] && [ "$4" != "" ] && arglist="$arglist $3 \"$4\""
+ 
+    [ "$1" = "add" ] || [ "$1" = "save" ] || [ "$1" = "rm" ] && arglist="$1 \"$2\""
+ 
+    mpdcom "$arglist" | cleanoutput
+}
 
 function notifselect() { 
 # Execute the desired action
 case $prompt in
     "")
 	$(mpdcom previous) > /dev/null 2>&1
+	currentsong
+	setmetadata
+	ffmpeg_routine
+	if [ -s /tmp/dmenu_output.txt ]; then
+		dmenu_condition=$(cat /tmp/dmenu_output.txt)
+		dmenum
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	else
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi
         ;;
     "")
 	$(mpdcom pause) > /dev/null 2>&1
-        ;;
+	currentsong
+	setmetadata
+	ffmpeg_routine
+	if [ -s /tmp/dmenu_output.txt ]; then
+		dmenu_condition=$(cat /tmp/dmenu_output.txt)
+		dmenum
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	else
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi	
+	;;
     "")
 	$(mpdcom play) > /dev/null 2>&1
+	currentsong
+	setmetadata
+	ffmpeg_routine
+	if [ -s /tmp/dmenu_output.txt ]; then
+		dmenu_condition=$(cat /tmp/dmenu_output.txt)
+		dmenum
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	else
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi
 	;;
     "")
 	$(mpdcom stop) > /dev/null 2>&1
-        ;;
+	if [ -s /tmp/dmenu_output.txt ]; then
+		dmenu_condition=$(cat /tmp/dmenu_output.txt)
+		dmenum
+		notify-send -u low -r 27072 " Stopped" --action "Open=Menu" &
+	else
+		notify-send -u low -r 27072 " Stopped" --action "Open=Menu" &
+	fi
+	;;
     "")
 	$(mpdcom next) > /dev/null 2>&1
-        ;;
+	currentsong
+	setmetadata
+	ffmpeg_routine
+	if [ -s /tmp/dmenu_output.txt ]; then
+		dmenu_condition=$(cat /tmp/dmenu_output.txt)
+		dmenum
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	else
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi
+	;;
     "$artist - $title")
     	songinfo
 	;;
@@ -142,6 +211,9 @@ esac
 
 # Checks if MPD is completely stopped
 function menunotif() {
+currentsong
+setmetadata
+ffmpeg_routine
 if [ -z "$title" ]; then
 	(notify-send -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output.txt)
 else
@@ -176,6 +248,7 @@ notifselect
 
 }
 
+# CLI actions
 case $1 in
 "help")
         help;;
@@ -183,33 +256,62 @@ case $1 in
 	prompt=""
 	notifselect
 	currentsong
+	setmetadata
+	ffmpeg_routine
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "play")
 	prompt=""
 	notifselect
 	currentsong
+	setmetadata
+	ffmpeg_routine
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "prev")
 	prompt=""
 	notifselect
 	currentsong
+	setmetadata
+	ffmpeg_routine
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "'stop'")
 	prompt=""
 	notifselect
 	currentsong
+	setmetadata
+	ffmpeg_routine
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "next")
 	prompt=""
 	notifselect
 	currentsong
+	setmetadata
+	ffmpeg_routine
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "menu")
+	$(echo Open > /tmp/dmenu_output.txt)
+	currentsong
+	setmetadata
+	ffmpeg_routine
 	dmenu_condition=Open
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	dmenum;;
+	if [ -s /tmp/dmenu_output.txt ]; then
+		dmenu_condition=$(cat /tmp/dmenu_output.txt)
+		dmenum
+		rm /tmp/dmenu_output.txt
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	else
+		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi
+	;;
 "notify")
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;	
+	currentsong
+	setmetadata
+	ffmpeg_routine
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+"direct")
+	mpdcom $2;;
+
+"clear" | "update" | "find" | "list" | "add" | "delete" | "save" | "rm" | "shuffle" | "crossfade" | "setvol")
+	mpdfunc $*;;
 "")
         menunotif;;
  
