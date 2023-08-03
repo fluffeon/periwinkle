@@ -22,6 +22,10 @@ function help()
 	echo ""
 	echo "	menu - Shows the dmenu prompt directly"
 	echo "	notify - Only shows a notification without actions" 
+	echo ""
+	echo "For now this client is a bit basic and stuff, but"
+	echo "I'm gonna keep developing it and it will have"
+	echo "more features in the future."
 }
 
 function error()
