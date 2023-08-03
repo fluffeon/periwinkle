@@ -56,7 +56,7 @@ function setmetadata() {
 	title=$(echo $stats | grep -oP '(?<=Title:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
 	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ {print $2}' | awk '{$1=$1};1')"
 	album=$(echo $stats | grep -oP '(?<=Album:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
-	date=$(echo $stats | grep -oP '(?<=Date:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
+	date=$(echo $stats | grep -oP '(?<=Date:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')	
 
 	if [ -z "$date" ]; then
 		date=""
@@ -143,6 +143,13 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
+	if [ "$daemonmode" = "true" ]; then
+		rm /tmp/dmenu_output.txt
+		dmenum &
+	else
+		cat /dev/null
+	fi
+
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
@@ -156,6 +163,13 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
+	if [ "$daemonmode" = "true" ]; then
+		rm /tmp/dmenu_output.txt
+		dmenum
+	else
+		cat /dev/null
+	fi
+
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
@@ -169,6 +183,13 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
+	if [ "$daemonmode" = "true" ]; then
+		rm /tmp/dmenu_output.txt
+		dmenum
+	else
+		cat /dev/null
+	fi
+
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
@@ -179,6 +200,13 @@ case $prompt in
 	;;
     "")
 	$(mpdcom stop) > /dev/null 2>&1
+	if [ "$daemonmode" = "true" ]; then
+		rm /tmp/dmenu_output.txt
+		dmenum
+	else
+		cat/dev/null
+	fi
+
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
@@ -192,6 +220,13 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
+	if [ "$daemonmode" = "true" ]; then
+		rm /tmp/dmenu_output.txt
+		dmenum
+	else
+		cat /dev/null
+	fi
+
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
@@ -209,7 +244,7 @@ case $prompt in
 esac
 }
 
-# Checks if MPD is completely stopped
+# Menu
 function menunotif() {
 currentsong
 setmetadata
@@ -231,6 +266,27 @@ fi
 rm /tmp/dmenu_output.txt
 }
 
+function menunotif_daemon() {
+currentsong
+setmetadata
+ffmpeg_routine
+if [ -z "$title" ]; then
+	(notify-send -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
+else
+	(notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
+fi
+
+if [ -s /tmp/dmenu_output_daemon.txt ]; then
+	dmenu_condition=$(cat /tmp/dmenu_output_daemon.txt)
+	dmenum
+else
+	cat /dev/null
+fi
+
+# Clean up the temporary file
+rm /tmp/dmenu_output_daemon.txt
+}
+
 function dmenum() {
 
 # MPD Controls
@@ -245,6 +301,48 @@ else
 fi
 
 notifselect
+
+}
+
+function daemonize() {		
+echo "You're now running Periwinkle as a daemon!"
+echo "The purpose of this feature is to make it so that you get MPD notifications"
+echo "even when you're not running it."
+echo ""
+echo "This feature is still experimental, so please beware of anything that might happen"
+set -x
+daemonmode=true
+currentsong
+setmetadata
+ffmpeg_routine
+
+while true; do
+	currentsong
+	setmetadata
+	currentsong_daemon="$title"
+
+	if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
+		currentsong
+		setmetadata
+		ffmpeg_routine
+		menunotif_daemon
+		previoussong_daemon="$currentsong_daemon"
+    	fi
+
+# Get the number of processes for the given command
+num_processes=$(ps -e -o cmd | grep "notify_send" | wc -l)
+
+# Check if the number of processes is greater than 10
+if [ $num_processes -gt 10 ]; then
+  # Kill all the processes of the given command
+  pkill "notify_send"
+  echo "Killed all processes of 'notify_send'."
+else
+  echo "No action required. 'notify_send' has $num_processes processes."
+fi
+
+	sleep 1
+done
 
 }
 
@@ -266,7 +364,7 @@ case $1 in
 	setmetadata
 	ffmpeg_routine
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
-"prev")
+"prev" | "previous" | "backward")
 	prompt=""
 	notifselect
 	currentsong
@@ -280,7 +378,7 @@ case $1 in
 	setmetadata
 	ffmpeg_routine
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
-"next")
+"next" | "forward")
 	prompt=""
 	notifselect
 	currentsong
@@ -309,7 +407,8 @@ case $1 in
 	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "direct")
 	mpdcom $2;;
-
+"daemon")
+	daemonize;;
 "clear" | "update" | "find" | "list" | "add" | "delete" | "save" | "rm" | "shuffle" | "crossfade" | "setvol")
 	mpdfunc $*;;
 "")
