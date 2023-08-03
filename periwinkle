@@ -1,0 +1,214 @@
+#!/bin/sh
+
+MPD_HOST="localhost"
+MPD_PORT="6600"
+
+function help()
+{
+	echo "Periwinkle - The cutest MPD client"
+	echo ""
+	echo "This is a CLI and also a semi-GUI client that can"
+	echo "be integrated into a DWM desktop by the use of"
+	echo "dunst and dmenu, if you'd like."
+	echo ""
+	echo "Usage: periwinkle <command> [<arguments> <more args>]"
+	echo
+	echo "Commands"
+	echo "	pause - Toggles between pause and play"
+	echo "	play - Play the current song"
+	echo "	stop - Stops the queue completely"
+	echo "	prev, previous - Goes to the previous song on the queue"
+	echo "	next, forward - Goes to the next song on the queue"
+	echo ""
+	echo "	menu - Shows the dmenu prompt directly"
+	echo "	notify - Only shows a notification without actions" 
+}
+
+function error()
+{
+    echo "Error: $* is not a known command >.<"
+}
+
+# Function to send commands to MPD
+function mpdcom {
+    printf '%s\n' "$1" | nc -w 1 -q 0 "$MPD_HOST" "$MPD_PORT"
+}
+
+# Save the output to a variable so it isn't called everytime, improving performance
+function currentsong() {
+	stats="$(mpdcom currentsong | tr -d '\r')"
+	title=$(echo $stats | grep -oP '(?<=Title:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
+	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ {print $2}' | awk '{$1=$1};1')"
+	album=$(echo $stats | grep -oP '(?<=Album:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
+	date=$(echo $stats | grep -oP '(?<=Date:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
+
+	if [ -z "$date" ]; then
+		date=""
+	else
+    		date="($date)"
+	fi
+}
+
+function ffmpeg_routine() {
+	# Comment [ -e "$previewname" ] || if you want the album cover to be constantly overwritten by FFMPEG when it yanks it. Although it makes it very slow and I don't recommend changing it
+	[ -e "$previewname" ] || 
+	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
+}
+
+currentsong
+
+# Settings
+music_dir="$HOME/Music"
+previewdir="$HOME/ncmpcpp/previews"
+
+# Fetch some stuff, better not change this
+mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
+filename=$music_dir/${mpc_file##*:}
+dmenu="dmenu -i -p "mpd:" -fn $DMENU_FONT -nb $DWMCOL_GRAY1 -nf $DWMCOL_GRAY3 -sb $DWMCOL_CYAN -sf $DWMCOL_GRAY4"
+
+# If the audio file doesn't contain a year in the metadata, overwrite the variable as nothing and don't show the parentheses so it doesn't look ugly
+#if [ -z "$date" ]; then
+#    date=""
+#else
+#    date="($date)"
+#fi
+
+#The purpose of this variable is to set each album as unique as possible
+#For example, if you had Weezer self-titled albums with the same album name in their metadata, it should be able to differentiate them to show the correct album cover because they have a different metadata for the year and artist. If you have proper metadata for every album then it should work as expected
+# Please note that if you don't need this, you can just remove the $date settings. In fact, you could just set this to your liking and make it more verbose, but that's on you.
+
+# Uncomment this to not use SHA256
+#previewname="$previewdir/$(mpc --format %album% current).png"
+
+# Comment this to not use SHA256
+# In fact, you could just replace SHA256 with another hash, like MD5 or SHA512
+previewname=$previewdir/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
+
+# If the album cover doesn't load on the notification, it might be best to disable MD5
+# However one side effect is that you can't save album covers with names that have quirky characters
+# This mainly happens to Mopidy users.
+
+#Debugging purposes
+#echo 'Output: '
+#echo $stats
+#echo
+#echo 'Previe
+#w Dir: '"$previewdir"
+#echo 'Filename: '"$filename"
+#echo 'Preview Name: '"$previewname"
+#echo ""
+#echo 'Title: '"$title"
+#echo 'Artist: '"$artist"
+#echo 'Album: '"$album"
+#echo 'Date: '"$date"
+
+ffmpeg_routine
+
+# [ -e "$previewname" ] || 
+#	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
+
+# notify-send -r 27072 "$(echo -e "\uf04b") $(mpc --format '%title%' current)" "$(mpc --format '%artist% \n%album% (%date%)' current)" -i "$previewname
+
+function notifselect() { 
+# Execute the desired action
+case $prompt in
+    "")
+	$(mpdcom previous) > /dev/null 2>&1
+        ;;
+    "")
+	$(mpdcom pause) > /dev/null 2>&1
+        ;;
+    "")
+	$(mpdcom play) > /dev/null 2>&1
+	;;
+    "")
+	$(mpdcom stop) > /dev/null 2>&1
+        ;;
+    "")
+	$(mpdcom next) > /dev/null 2>&1
+        ;;
+    "$artist - $title")
+    	songinfo
+	;;
+    *)
+        cat /dev/null
+        ;;
+esac
+}
+
+# Checks if MPD is completely stopped
+function menunotif() {
+if [ -z "$title" ]; then
+	(notify-send -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output.txt)
+else
+	(notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output.txt)
+fi
+
+if [ -s /tmp/dmenu_output.txt ]; then
+	dmenu_condition=$(cat /tmp/dmenu_output.txt)
+	dmenum
+else
+	cat /dev/null
+fi
+
+# Clean up the temporary file
+rm /tmp/dmenu_output.txt
+}
+
+function dmenum() {
+
+# MPD Controls
+mpd=("" "" "" "" "" "$artist - $title")
+#dmenu_run -m dmenumon -fn $DMENU_FONT -nb $DWMCOL_GRAY1 -nf $DWMCOL_GRAY3 -sb $DWMCOL_CYAN -sf $DWMCOL_GRAY4
+
+# Show dmenu with the controls
+if [ -z "$dmenu_condition" ]; then
+	cat /dev/null
+else
+	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
+fi
+
+notifselect
+
+}
+
+case $1 in
+"help")
+        help;;
+"pause")
+	prompt=""
+	notifselect
+	currentsong
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+"play")
+	prompt=""
+	notifselect
+	currentsong
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+"prev")
+	prompt=""
+	notifselect
+	currentsong
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+"'stop'")
+	prompt=""
+	notifselect
+	currentsong
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+"next")
+	prompt=""
+	notifselect
+	currentsong
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+"menu")
+	dmenu_condition=Open
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	dmenum;;
+"notify")
+	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;	
+"")
+        menunotif;;
+ 
+    *)
+        error $*;;
+esac
