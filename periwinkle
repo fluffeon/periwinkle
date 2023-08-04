@@ -20,33 +20,12 @@ function whichone() {
 			exit 1
 		;;
 	esac
-#	if [ $cmd = "notify-send" ]; then
-#		echo "Error: 'notify-send' (libnotify) is required but not found. Please install it."
-#	fi
-#
-#	if [ $cmd = "nc" ]; then
-#		echo "Error: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it."
-#		exit 1
-#	fi
-#
-#	if [ $cmd = "awk" ]; then
-#		echo "Error: 'awk' is required but not found. Please install it."
-#		exit 1
-#	fi
-#
-#	if [ $cmd = "sed" ]; then
-#		echo "Error: 'sed' s required but not found. Please install it."
-#		exit 1
-#	fi
-	
 }
 
 dependencies=("sed" "nc" "awk" "notify-send")
 
 for cmd in "${dependencies[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
-        # echo "Error: '$cmd' is required but not found. Please install it."
-        # exit 1
 	whichone
     fi
 done
