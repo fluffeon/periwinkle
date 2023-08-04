@@ -19,10 +19,14 @@ function whichone() {
 			echo "Error: 'notify-send' (libnotify) is required but not found. Please install it."
 			exit 1
 		;;
+		"dmenu")
+			echo "Error: 'dmenu' is required but not found. Please install it."
+                        exit 1
+		;;
 	esac
 }
 
-dependencies=("sed" "nc" "awk" "notify-send")
+dependencies=("sed" "nc" "awk" "notify-send" "dmenu")
 
 for cmd in "${dependencies[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
