@@ -1,8 +1,28 @@
-#!/bin/sh
+#!/bin/bash
 
-function cleanoutput() {
-	sed "/^OK.*$/d"
+# Check if the necessary dependencies are installed
+function whichone() {
+	if [ $cmd = "nc" ]; then
+		echo "Error: 'openbsd-netcat' or 'gnu-netcat' is required but not found. Please install it."
+		exit 1
+	else
+		echo "Error: '$cmd' is required but not found. Please install it."
+		exit 1
+	fi
 }
+
+dependencies=("sed" "nc" "awk" "notify-send")
+
+for cmd in "${dependencies[@]}"; do
+    if ! command -v "$cmd" &>/dev/null; then
+        # echo "Error: '$cmd' is required but not found. Please install it."
+        # exit 1
+	whichone
+    fi
+done
+
+alias cleanoutput="sed "/^OK.*$/d""
+
 
 MPD_HOST="localhost"
 MPD_PORT="6600"
@@ -40,9 +60,9 @@ function error()
     echo "Error: $* is not a known command >.<"
 }
 
-# Function to send commands to MPD
+# Function to send commands to MPD which is netcat-agnostic
 function mpdcom {
-    printf '%s\n' "$1" | nc -w 1 -q 0 "$MPD_HOST" "$MPD_PORT"
+	echo -e "$1\nclose" | nc "localhost" "6600";
 }
 
 # Save the output to a variable so it isn't called everytime, improving performance
