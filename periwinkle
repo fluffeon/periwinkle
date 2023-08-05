@@ -490,6 +490,8 @@ case $1 in
 		$(mkconfig > $HOME/.config/periwinkle/config 2>&1)
 		echo "Done!"
 	else
+		echo 'Location: '$HOME/,config/periwinkle/config
+		echo ""
 		cat $HOME/.config/periwinkle/config
 	fi
 ;;
