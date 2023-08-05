@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # Check if the necessary dependencies are installed
 function whichone() {
 	case $cmd in
@@ -27,10 +26,13 @@ function whichone() {
 			echo "Error: 'dmenu' is required but not found. Please install it."
                         exit 1
 		;;
+	"ffmpeg")
+		echo "Error: 'ffmpeg' is required but not found. Please install it."
+		;;
 	esac
 }
 
-dependencies=("sed" "nc" "awk" "notify-send" "dmenu" "bc")
+dependencies=("sed" "nc" "awk" "notify-send" "dmenu" "bc" "ffmpeg")
 
 for cmd in "${dependencies[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
@@ -53,34 +55,92 @@ MPD_PORT="6600"
 #
 # In dwm, usually the following equivalents for dmenu coloring are:
 # DMENU_FONT = dmenufont
-# DWMCOL_BG = col_gray1
-# DWMCOL_FG = col_gray3
-# DWMCOL_SELECTBG = col_gray4
-# DWMCOL_SELECTFG = col_cyan
-DMENU_FONT="Terminus:size=10"
-DWMCOL_BG=#2A2A2A
-DWMCOL_FG=#ECECEC	
-DWMCOL_SELECTBG=#000000
-DWMCOL_SELECTFG=#70C0BA
+# DMENUCOL_BG = col_gray1
+# DMENUCOL_FG = col_gray3
+# DMENUCOL_SELECTBG = col_gray4
+# DMENUCOL_SELECTFG = col_cyan
+DMENU_FONT=Terminus:size=10
+DMENUCOL_BG=#2A2A2A
+DMENUCOL_FG=#ECECEC	
+DMENUCOL_SELECTBG=#000000
+DMENUCOL_SELECTFG=#70C0BA
 
 # NOTIFICATION SETTINGS
+#
 # Notify timeout in seconds
-TIMEOUT=3'
+TIMEOUT=3
+
+# PREVIEW SETTINGS
+# 
+# Choose the hash that you would like to use to save the image previews
+# This is useful to keep every single album unique.
+# For example, if you had Weezer self-titled albums with the same album name in their metadata, it should be able to differentiate them to show the correct album cover because they have a different metadata for the year and artist. If you have proper metadata for every album then it should work as expected
+#
+# Options: 
+# none | md5 | sha256 | sha512
+# The default is sha256
+USEHASH=sha256'
 }
 
-if [ -s $HOME/.config/periwinkle/config ]; then
-	source $HOME/.config/periwinkle/config
-else
+if [ ! -f "$HOME/.config/periwinkle/config" ]; then
 	mkdir $HOME/.config/periwinkle > /dev/null 2>&1
-	$(mkconfig > $HOME/.config/periwinkle/config 2>&1)
-	source $HOME/.config/periwinkle/config
+	$(mkconfig > $HOME/.config/periwinkle/config 2>&1)	
+	echo "Hello! It looks like it's your first time running Periwinkle."
+	echo "I've went ahead and created a config file for you at:"
+	echo $HOME'/.config/periwinkle'
+	echo -n
+	echo "You can tinker with the settings of the program if you'd like."
+	echo 'Enjoy! ^w^'
+fi
+
+
+
+# This whole section is dedicated to setting up the config file.
+
+eliminate_comments() {
+    local input_file="$1"
+    local the_output
+    the_output=$(awk '!/^[[:space:]]*(#|$)/' "$input_file")
+    echo "$the_output"
+}
+
+# Call the function and store the output in a Bash variable
+CLEANOUTPUT=$(eliminate_comments "$HOME/.config/periwinkle/config")
+
+echo "$CLEANOUTPUT" > /tmp/clean_output.txt
+
+more_config() {
+    # Specify the desired environment variables here (space-separated list)
+    designated_variables="MPD_HOST MPD_PORT MPD_MUSICDIR PREVIEWDIR DMENU_FONT DMENUCOL_BG DMENUCOL_FG DMENUCOL_SELECTBG DMENUCOL_SELECTFG TIMEOUT USEHASH"
+
+    # Use awk to extract the desired environment variables and set them as Bash variables
+    while read -r line; do
+        variable_name=$(echo "$line" | awk -F= '{print $1}')
+        if [[ $designated_variables =~ $variable_name ]]; then
+	echo $line
+            export "$line"
+        fi
+done < "/tmp/clean_output.txt" 
+}
+
+# Call the function to set the user configs
+more_config > /dev/null 2>&1 
+rm /tmp/clean_output.txt
+
+PREVIEWDIR="$HOME/periwinkle"
+MPD_MUSICDIR="$HOME/Music"
+
+if [ ! -d "$PREVIEWDIR" ]; then
+	mkdir -v $PREVIEWDIR
 fi
 
 # Convert the seconds to milliseconds in the Timeout variable
 TIMEOUT=$(awk "BEGIN { printf(\"%.0f\", $TIMEOUT * 1000) }" | awk '{sub(/%$/,"")}1')
 
 # Clean the stinky output
-alias cleanoutput="sed "/^OK.*$/d""
+function cleanoutput() {
+sed "/^OK.*$/d"
+}
 
 function help()
 {
@@ -103,11 +163,21 @@ function help()
 	echo "	notify - Only shows a notification without actions" 
 	echo ""
 	echo "Debug commands"
+	echo "	statsfornerds - Shows some environment variables related to Periwinkle"
 	echo "	direct - Interacts with the MPD server directly (advanced)"
 	echo ""
 	echo "For now this client is a bit basic and stuff, but"
 	echo "I'm gonna keep developing it and it will have"
 	echo "more features in the future."
+}
+
+function programversion() {
+	echo "Periwinkle - The cutest MPD client"
+	echo "Version:"
+	echo ""
+	echo "Maintained by flookerton"
+	echo ""
+	echo "Contributors: ChatGPT, Barrucadu"
 }
 
 function error() {
@@ -123,7 +193,7 @@ function mpdcom {
 function currentsong() {
 	stats="$(mpdcom currentsong | tr -d '\r')"
 	mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
-	filename=$music_dir/${mpc_file##*:}
+	filename=$MPD_MUSICDIR/${mpc_file##*:}
 }
 
 function setmetadata() {
@@ -141,55 +211,37 @@ function setmetadata() {
 
 function ffmpeg_routine() {
 	# Comment [ -e "$previewname" ] || if you want the album cover to be constantly overwritten by FFMPEG when it yanks it. Although it makes it very slow and I don't recommend changing it
-	previewname=$previewdir/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
+	# previewname=$PREVIEWDIR/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
+	setpreviewname
 	[ -e "$previewname" ] || 
 	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
 }
 
 # Settings
-music_dir="$HOME/Music"
-previewdir="$HOME/ncmpcpp/previews"
+#MPDMUSIC_DIR="$HOME/Music"
+# PREVIEWDIR="$HOME/ncmpcpp/previews"
 
 # Fetch some stuff, better not change this
 mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
-filename=$music_dir/${mpc_file##*:}
-dmenu="dmenu -i -p "mpd:" -fn $DMENU_FONT -nb $DWMCOL_BG -nf $DWMCOL_FG -sb $DWMCOL_SELECTBG -sf $DWMCOL_SELECTFG"
+filename=$MPD_MUSICDIR/${mpc_file##*:}
+dmenu="dmenu -i -p "mpd:" -fn $DMENU_FONT -nb $DMENUCOL_BG -nf $DMENUCOL_FG -sb $DMENUCOL_SELECTBG -sf $DMENUCOL_SELECTFG"
 
-# If the audio file doesn't contain a year in the metadata, overwrite the variable as nothing and don't show the parentheses so it doesn't look ugly
-#if [ -z "$date" ]; then
-#    date=""
-#else
-#    date="($date)"
-#fi
-
-#The purpose of this variable is to set each album as unique as possible
-#For example, if you had Weezer self-titled albums with the same album name in their metadata, it should be able to differentiate them to show the correct album cover because they have a different metadata for the year and artist. If you have proper metadata for every album then it should work as expected
-# Please note that if you don't need this, you can just remove the $date settings. In fact, you could just set this to your liking and make it more verbose, but that's on you.
-
-# Uncomment this to not use SHA256
-#previewname="$previewdir/$(mpc --format %album% current).png"
-
-# Comment this to not use SHA256
-# In fact, you could just replace SHA256 with another hash, like MD5 or SHA512
-previewname=$previewdir/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
-
-# If the album cover doesn't load on the notification, it might be best to disable MD5
-# However one side effect is that you can't save album covers with names that have quirky characters
-# This mainly happens to Mopidy users.
-
-#Debugging purposes
-#echo 'Output: '
-#echo $stats
-#echo
-#echo 'Previe
-#w Dir: '"$previewdir"
-#echo 'Filename: '"$filename"
-#echo 'Preview Name: '"$previewname"
-#echo ""
-#echo 'Title: '"$title"
-#echo 'Artist: '"$artist"
-#echo 'Album: '"$album"
-#echo 'Date: '"$date"
+function setpreviewname() {
+case $USEHASH in
+	"none")
+	previewname=$PREVIEWDIR/$(echo $album $date).png
+	;;
+	"md5")
+	previewname=$PREVIEWDIR/$(echo "$album $date" | md5sum | cut -d' ' -f1).png
+	;;
+	"sha512")
+	previewname=$PREVIEWDIR/$(echo "$album $date" | sha512sum | cut -d' ' -f1).png
+	;;
+	"sha256" | "" | *)
+	previewname=$PREVIEWDIR/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
+	;;	
+esac
+}
 
 function mpdfunc()
 {
@@ -361,7 +413,6 @@ function dmenum() {
 
 # MPD Controls
 mpd=("" "" "" "" "" "$artist - $title")
-#dmenu_run -m dmenumon -fn $DMENU_FONT -nb $DWMCOL_GRAY1 -nf $DWMCOL_GRAY3 -sb $DWMCOL_CYAN -sf $DWMCOL_GRAY4
 
 # Show dmenu with the controls
 if [ -z "$dmenu_condition" ]; then
@@ -465,9 +516,8 @@ case $1 in
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
 		rm /tmp/dmenu_output.txt
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		cat /dev/null
 	fi
 	;;
 "notify")
@@ -495,9 +545,32 @@ case $1 in
 		cat $HOME/.config/periwinkle/config
 	fi
 ;;
+"statsfornerds")
+	setpreviewname
+	currentsong
+	setmetadata
+	ffmpeg_routine
+	echo 'Output: '
+	echo $stats
+	echo
+	echo 'Preview Dir: '"$PREVIEWDIR"
+	echo 'Filename: '"$filename"
+	echo 'Preview Name: '"$previewname"
+	echo ""
+	echo 'Title: '"$title"
+	echo 'Artist: '"$artist"
+	echo 'Album: '"$album"
+	echo 'Date: '"$date"
+	echo
+	echo 'Hash: '"$USEHASH"
+;;
+"version")
+	programversion
+;;
 "")
         menunotif;;
  
     *)
-        error $*;;
+        error $*
+	exit 1;;
 esac
