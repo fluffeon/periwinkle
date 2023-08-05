@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 # Check if the necessary dependencies are installed
 function whichone() {
 	case $cmd in
@@ -16,9 +17,12 @@ function whichone() {
 			exit 1
 		;;
 		"sed")
-			echo "Error: 'notify-send' (libnotify) is required but not found. Please install it."
+			echo "Error: 'sed' is required but not found. Please install it."
 			exit 1
 		;;
+		"grep")
+			echo "Error: 'grep' is required but not found. Please install it."
+			;;
 		"dmenu")
 			echo "Error: 'dmenu' is required but not found. Please install it."
                         exit 1
@@ -26,7 +30,7 @@ function whichone() {
 	esac
 }
 
-dependencies=("sed" "nc" "awk" "notify-send" "dmenu")
+dependencies=("sed" "nc" "awk" "notify-send" "dmenu" "bc")
 
 for cmd in "${dependencies[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
@@ -34,11 +38,49 @@ for cmd in "${dependencies[@]}"; do
     fi
 done
 
-alias cleanoutput="sed "/^OK.*$/d""
+# Make the config file if it's not there already
+function mkconfig() {
+	echo '# This is the config file for Periwinkle
 
-
+# MPD SETTINGS
+#
+# Self-explanatory, you can set your MPD host here.
+# Usually the default will work but you can make it point to a custom URL.
 MPD_HOST="localhost"
 MPD_PORT="6600"
+
+# DMENU COLORS
+#
+# In dwm, usually the following equivalents for dmenu coloring are:
+# DMENU_FONT = dmenufont
+# DWMCOL_BG = col_gray1
+# DWMCOL_FG = col_gray3
+# DWMCOL_SELECTBG = col_gray4
+# DWMCOL_SELECTFG = col_cyan
+DMENU_FONT="Terminus:size=10"
+DWMCOL_BG=#2A2A2A
+DWMCOL_FG=#ECECEC	
+DWMCOL_SELECTBG=#000000
+DWMCOL_SELECTFG=#70C0BA
+
+# NOTIFICATION SETTINGS
+# Notify timeout in seconds
+TIMEOUT=3'
+}
+
+if [ -s $HOME/.config/periwinkle/config ]; then
+	source $HOME/.config/periwinkle/config
+else
+	mkdir $HOME/.config/periwinkle > /dev/null 2>&1
+	$(mkconfig > $HOME/.config/periwinkle/config 2>&1)
+	source $HOME/.config/periwinkle/config
+fi
+
+# Convert the seconds to milliseconds in the Timeout variable
+TIMEOUT=$(awk "BEGIN { printf(\"%.0f\", $TIMEOUT * 1000) }" | awk '{sub(/%$/,"")}1')
+
+# Clean the stinky output
+alias cleanoutput="sed "/^OK.*$/d""
 
 function help()
 {
@@ -111,7 +153,7 @@ previewdir="$HOME/ncmpcpp/previews"
 # Fetch some stuff, better not change this
 mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
 filename=$music_dir/${mpc_file##*:}
-dmenu="dmenu -i -p "mpd:" -fn $DMENU_FONT -nb $DWMCOL_GRAY1 -nf $DWMCOL_GRAY3 -sb $DWMCOL_CYAN -sf $DWMCOL_GRAY4"
+dmenu="dmenu -i -p "mpd:" -fn $DMENU_FONT -nb $DWMCOL_BG -nf $DWMCOL_FG -sb $DWMCOL_SELECTBG -sf $DWMCOL_SELECTFG"
 
 # If the audio file doesn't contain a year in the metadata, overwrite the variable as nothing and don't show the parentheses so it doesn't look ugly
 #if [ -z "$date" ]; then
@@ -149,11 +191,6 @@ previewname=$previewdir/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
 #echo 'Album: '"$album"
 #echo 'Date: '"$date"
 
-# [ -e "$previewname" ] || 
-#	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
-
-# notify-send -r 27072 "$(echo -e "\uf04b") $(mpc --format '%title%' current)" "$(mpc --format '%artist% \n%album% (%date%)' current)" -i "$previewname
-
 function mpdfunc()
 {
     arglist=$1
@@ -185,9 +222,9 @@ case $prompt in
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	else
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi
         ;;
     "")
@@ -205,9 +242,9 @@ case $prompt in
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	else
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi	
 	;;
     "")
@@ -225,9 +262,9 @@ case $prompt in
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	else
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi
 	;;
     "")
@@ -242,9 +279,9 @@ case $prompt in
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
-		notify-send -u low -r 27072 " Stopped" --action "Open=Menu" &
+		notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" &
 	else
-		notify-send -u low -r 27072 " Stopped" --action "Open=Menu" &
+		notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" &
 	fi
 	;;
     "")
@@ -262,13 +299,13 @@ case $prompt in
 	if [ -s /tmp/dmenu_output.txt ]; then
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	else
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi
 	;;
     "$artist - $title")
-    	songinfo
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	;;
     *)
         cat /dev/null
@@ -282,9 +319,9 @@ currentsong
 setmetadata
 ffmpeg_routine
 if [ -z "$title" ]; then
-	(notify-send -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output.txt)
+	(notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output.txt)
 else
-	(notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output.txt)
+	(notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output.txt)
 fi
 
 if [ -s /tmp/dmenu_output.txt ]; then
@@ -303,12 +340,13 @@ currentsong
 setmetadata
 ffmpeg_routine
 if [ -z "$title" ]; then
-	(notify-send -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
+	(notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
 else
-	(notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
+	(notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
 fi
 
 if [ -s /tmp/dmenu_output_daemon.txt ]; then
+	pkill -9 notify-send
 	dmenu_condition=$(cat /tmp/dmenu_output_daemon.txt)
 	dmenum
 else
@@ -388,35 +426,35 @@ case $1 in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "play")
 	prompt=""
 	notifselect
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "prev" | "previous" | "backward")
 	prompt=""
 	notifselect
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "'stop'")
 	prompt=""
 	notifselect
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "next" | "forward")
 	prompt=""
 	notifselect
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "menu")
 	$(echo Open > /tmp/dmenu_output.txt)
 	currentsong
@@ -427,22 +465,34 @@ case $1 in
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
 		rm /tmp/dmenu_output.txt
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	else
-		notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi
 	;;
 "notify")
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "direct")
 	mpdcom $2;;
 "daemon")
 	daemonize;;
 "clear" | "update" | "find" | "list" | "add" | "delete" | "save" | "rm" | "shuffle" | "crossfade" | "setvol")
 	mpdfunc $*;;
+"config")
+	if [ $2 != "reset" ]; then
+		echo "Error: Wrong arguments for this command"
+	elif [ $2 = "reset" ]; then
+		echo "Restoring Periwinkle's configurations to their defaults..."
+		rm $HOME/.config/periwinkle/config
+		$(mkconfig > $HOME/.config/periwinkle/config 2>&1)
+		echo "Done!"
+	else
+		cat $HOME/.config/periwinkle/config
+	fi
+;;
 "")
         menunotif;;
  
