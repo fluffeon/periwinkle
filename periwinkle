@@ -32,7 +32,7 @@ function whichone() {
 	esac
 }
 
-dependencies=("sed" "nc" "awk" "notify-send" "dmenu" "bc" "ffmpeg")
+dependencies=("sed" "nc" "awk" "notify-send" "dmenu" "ffmpeg")
 
 for cmd in "${dependencies[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
