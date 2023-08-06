@@ -4,30 +4,30 @@
 function whichone() {
 	case $cmd in
 		"notify-send")
-			echo "Error: 'notify-send' (libnotify) is required but not found. Please install it."
+			echo "Dependency missing: 'notify-send' (libnotify) is required but not found. Please install it."
 			exit 1
 		;;
 		"nc")
-			echo "Error: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it."
+			echo "Dependency missing: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it."
 			exit 1
 		;;
 		"awk")
-			echo "Error: 'awk' is required but not found. Please install it."
+			echo "Dependency missing: 'awk' is required but not found. Please install it."
 			exit 1
 		;;
 		"sed")
-			echo "Error: 'sed' is required but not found. Please install it."
+			echo "Dependency missing: 'sed' is required but not found. Please install it."
 			exit 1
 		;;
 		"grep")
-			echo "Error: 'grep' is required but not found. Please install it."
+			echo "Dependency missing: 'grep' is required but not found. Please install it."
 			;;
 		"dmenu")
-			echo "Error: 'dmenu' is required but not found. Please install it."
+			echo "Dependency missing: 'dmenu' is required but not found. Please install it."
                         exit 1
 		;;
 	"ffmpeg")
-		echo "Error: 'ffmpeg' is required but not found. Please install it."
+		echo "Dependency missing: 'ffmpeg' is required but not found. Please install it."
 		;;
 	esac
 }
@@ -180,19 +180,35 @@ function help()
 	echo "be integrated into a DWM desktop by the use of"
 	echo "dunst and dmenu, if you'd like."
 	echo ""
-	echo "Usage: periwinkle <command> [<arguments> <more args>]"
+	echo "Usage: periwinkle [<command> <arguments> ... <more args>]"
 	echo
-	echo "Commands"
+	echo "Fetch Commands"
+	echo "	add <file> - Adds a song from the music dir to the playlist"
+	echo "	delete <int song> - Removes a song from the playlist"
+	echo "	save <string playlist name> - Saves the playlist as a file"
+	echo "	rm <string playlist name> - Deletes a saved playlist"
+	echo "	list <metadata arg1> [<metadata arg2> <search term>] - Fetches a list of songs based on the metadata input by the user"
+	echo ""
+	echo "Playlist Commands"
 	echo "	pause - Toggles between pause and play"
 	echo "	play - Play the current song"
-	echo "	stop - Stops the queue completely"
+	echo "	stop - Stops the playlist completely"
 	echo "	prev, previous - Goes to the previous song on the queue"
 	echo "	next, forward - Goes to the next song on the queue"
+	echo "	setvol <0 - 100> - Sets the volume"
+	echo "	crossfade <int> - Sets a crossfade between songs"
+	echo "	shuffle - Shuffles the playlist"
 	echo ""
+	echo "Database Commands"
+	echo "	update - Updates the MPD database"
+	echo ""
+	echo "Periwinkle Commands"
 	echo "	menu - Shows the dmenu prompt directly"
-	echo "	notify - Only shows a notification without actions" 
+	echo "	notify - Only shows a notification without actions"
+	echo "	info - Report version of Periwinkle, and licensing information"
 	echo ""
-	echo "Debug commands"
+	echo "Advanced commands"
+	echo "	daemon - Run as a daemon to show song notifications on the background (experimental)"
 	echo "	statsfornerds - Shows some environment variables related to Periwinkle"
 	echo "	direct - Interacts with the MPD server directly (advanced)"
 	echo ""
@@ -201,13 +217,27 @@ function help()
 	echo "more features in the future."
 }
 
-function programversion() {
-	echo "Periwinkle - The cutest MPD client"
-	echo "Version:"
-	echo ""
-	echo "Maintained by flookerton"
-	echo ""
-	echo "Contributors: ChatGPT, Barrucadu"
+function programinfo() {
+	echo "
+    Periwinkle - The cutest MPD client
+    Version:
+
+    Copyright (C) 2023  flookerton
+
+    Contributors: ChatGPT, Barrucadu
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>."
 }
 
 function error() {
@@ -600,8 +630,8 @@ case $1 in
 	echo
 	echo 'Hash: '"$USEHASH"
 ;;
-"version")
-	programversion
+"info")
+	programinfo
 	;;
 "")
         menunotif;;
