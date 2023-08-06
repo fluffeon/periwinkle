@@ -15,36 +15,68 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+function error() {
+case $1 in
+"unknown")
+	echo "Error: $* is not a known command >.<"
+	exit 1;;
+	
+"invint")
+	echo "Error: '"$input"' is not a valid integer -w-"
+	exit 1;;
+
+"invnum")
+	echo "Error: '"$input"' is not a valid number -w-"
+	exit 1;;
+
+"fewargs")
+	echo "Error: Not enough arguments... ;w;"
+	exit 1;;
+
+"manyargs")
+	echo "Error: T-That's too many arguments!! >w<"
+	exit 1;;
+
+"wrongargs")
+	echo "Error: Wrong arguments for this command... :<"
+	exit 1;;
+
+"" | *)
+	echo "Error: Something went wrong... o.O"
+	exit 1;;
+esac
+}
 
 # Check if the necessary dependencies are installed
 function whichone() {
 	case $cmd in
 		"notify-send")
 			echo "Dependency missing: 'notify-send' (libnotify) is required but not found. Please install it."
-			exit 1
-		;;
+			exit 1;;
+
 		"nc")
 			echo "Dependency missing: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it."
-			exit 1
-		;;
+			exit 1;;
+
 		"awk")
 			echo "Dependency missing: 'awk' is required but not found. Please install it."
-			exit 1
-		;;
+			exit 1;;
+
 		"sed")
 			echo "Dependency missing: 'sed' is required but not found. Please install it."
-			exit 1
-		;;
+			exit 1;;
+
 		"grep")
 			echo "Dependency missing: 'grep' is required but not found. Please install it."
-			;;
+			exit 1;;
+
 		"dmenu")
 			echo "Dependency missing: 'dmenu' is required but not found. Please install it."
-                        exit 1
-		;;
-	"ffmpeg")
-		echo "Dependency missing: 'ffmpeg' is required but not found. Please install it."
-		;;
+                        exit 1;;
+
+		"ffmpeg")
+			echo "Dependency missing: 'ffmpeg' is required but not found. Please install it."
+			exit 1;;
 	esac
 }
 
@@ -55,6 +87,8 @@ for cmd in "${dependencies[@]}"; do
 	whichone
     fi
 done
+
+# This whole section is dedicated to setting up the config file.
 
 # Make the config file if it's not there already
 function mkconfig() {
@@ -90,6 +124,7 @@ PREVIEWDIR='$HOME'/periwinkle
 # NOTIFICATION SETTINGS
 #
 # Notify timeout in seconds
+# Set 0 for no timeout
 TIMEOUT=3
 
 # PREVIEW SETTINGS
@@ -104,31 +139,53 @@ TIMEOUT=3
 USEHASH=sha256'
 }
 
-# Function to check if a value is an integer
-is_integer() {
-  [[ "$1" =~ ^[0-9]+$ ]]
+# Function to check if a value is a number
+function is_positive_number() {
+  local input="$1"
+  if [[ $input =~ ^[0-9]+([.][0-9]+)?$ ]] && (( $(awk 'BEGIN { print '"$input"' >= 0 }') )); then
+    return 0 # It's a positive number
+  else
+    return 1 # It's not a positive number or it contains non-numeric characters
+  fi
 }
 
-# Function to check if the integer is within the range 0-9999
+is_integer() {
+[[ "$input" =~ ^[0-9]+$ ]]
+}
+
+# Function to check if the integer is within the desired range
 is_valid_integer() {
   local num=$1
-  is_integer "$num" && (( num >= 0 && num <= 9999 ))
+  is_integer "$num" && (( num >= $MINIMUMVAL && num <= $MAXIMUMVAL ))
 }
 
 checknumbers() {
-# Read input and validate it until a valid integer in the range 0-9999 is provided
-while true; do
-  input=$1
+# Read input and validate it until a valid integer in the range is provided
+# while true; do
+case $2 in
+"integer")
+	input=$1
 
-  if is_valid_integer "$input"; then
-    # Set the variable with the validated integer
-    integer_variable="$input"
-    break
-  else
-    echo "Error: '"$input"' is not a valid integer"
-    exit 1
-  fi
-done
+	if is_valid_integer "$input"; then
+	# Set the variable with the validated integer
+		echo -n
+	else
+		input=$1 error invint
+	fi;;
+"decimal")
+	input=$1
+	if is_positive_number "$input"; then
+		echo -n
+	else
+		input=$1 error invnum
+	fi;;
+*)
+	echo $1
+	echo "DEBUG INFO: Invalid arguments for this function"
+	echo "If this gets outputted onto you, please open a issue about it"
+	error;;
+esac
+# done
 }
 
 if [ ! -f "$HOME/.config/periwinkle/config" ]; then
@@ -141,10 +198,6 @@ if [ ! -f "$HOME/.config/periwinkle/config" ]; then
 	echo "You can tinker with the settings of the program if you'd like."
 	echo 'Enjoy! ^w^'
 fi
-
-
-
-# This whole section is dedicated to setting up the config file.
 
 eliminate_comments() {
     local input_file="$1"
@@ -173,14 +226,20 @@ done < "/tmp/clean_output.txt"
 # Call the function to set the user configs
 more_config > /dev/null 2>&1 
 rm /tmp/clean_output.txt
-checknumbers $MPD_PORT
-checknumbers $TIMEOUT
+
+# Checks if MPD_PORT is a valid number that IS an integer and NOT a string
+MINIMUMVAL=1 MAXIMUMVAL=65535 checknumbers "$MPD_PORT" integer
+checknumbers "$TIMEOUT" decimal
+
+# Checks if TIMEOUT is a valid number that is NOT a string, but independently if it's an integer
 
 if [ ! -d "$PREVIEWDIR" ]; then
 	mkdir -v $PREVIEWDIR
 fi
 
-# Convert the seconds to milliseconds in the Timeout variable
+# The config checking routines were made by ChatGPT. Thank you so much.
+
+# Convert the seconds to milliseconds in the TIMEOUT variable
 TIMEOUT=$(awk "BEGIN { printf(\"%.0f\", $TIMEOUT * 1000) }" | awk '{sub(/%$/,"")}1')
 
 # Clean the stinky output
@@ -254,10 +313,6 @@ function programinfo() {
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>."
-}
-
-function error() {
-    echo "Error: $* is not a known command >.<"
 }
 
 # Function to send commands to MPD which is netcat-agnostic
@@ -530,7 +585,24 @@ done
 
 }
 
+get_user_confirmation() {
+  read -r -p "$1 (y/n): " response
+  case "$response" in
+    [yY]|[yY][eE][sS]) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
+resetpericonfig() {
+if get_user_confirmation "Do you want to reset Periwinkle's settings to their defaults?";then
+	echo "Restoring Periwinkle's configurations to their defaults..."
+		rm $HOME/.config/periwinkle/config
+		$(mkconfig > $HOME/.config/periwinkle/config 2>&1)
+		echo "Done!"
+	else
+		exit 0
+fi
+}
 
 # CLI actions
 case $1 in
@@ -592,23 +664,27 @@ case $1 in
 	mpdcom $2;;
 "daemon")
 	daemonize;;
-"clear" | "update" | "list" | "delete" | "shuffle" | "crossfade")
-	mpdfunc $*;;
+"clear" | "update" | "shuffle")
+	if [ -z $2 ]; then
+		mpdfunc $*;
+	else
+		error manyargs
+	fi
+;;
 "config")
 	if [ $2 != "reset" ]; then
-		echo "Error: Wrong arguments for this command"
+		error wrongargs
+	elif [ -n "$3" ]; then
+		error manyargs
 	elif [ $2 = "reset" ]; then
-		echo "Restoring Periwinkle's configurations to their defaults..."
-		rm $HOME/.config/periwinkle/config
-		$(mkconfig > $HOME/.config/periwinkle/config 2>&1)
-		echo "Done!"
+		resetpericonfig	
 	else
 		echo 'Location: '$HOME/,config/periwinkle/config
 		echo ""
 		cat $HOME/.config/periwinkle/config
 	fi
 ;;
-"add" | "rm" | "find" | "save" | "setvol")
+"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "delete")
 	# This is a temporary fix to make the strings parse correctly.
 	# Ideally I'd want to edit "mpdfunc" directly to make it correct
 	if [ -n $3 ]; then
@@ -623,8 +699,7 @@ case $1 in
 		CORRECT_INPUT2="$2"
 		mpdfunc $1 "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4"
 	else
-		echo "Error: Too few arguments"
-		exit 1
+		error fewargs
 	fi	
 	;;
 "statsfornerds")
@@ -653,6 +728,5 @@ case $1 in
         menunotif;;
  
     *)
-        error $*
-	exit 1;;
+        error unknown;;
 esac
