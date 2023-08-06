@@ -18,7 +18,7 @@
 function error() {
 case $1 in
 "unknown")
-	echo "Error: $* is not a known command >.<"
+	echo "Error: '"$input"' is not a known command >.<"
 	exit 1;;
 	
 "invint")
@@ -134,7 +134,7 @@ TIMEOUT=3
 # For example, if you had Weezer self-titled albums with the same album name in their metadata, it should be able to differentiate them to show the correct album cover because they have a different metadata for the year and artist. If you have proper metadata for every album then it should work as expected
 #
 # Options: 
-# none | md5 | sha256 | sha512
+# none | md5 | sha256 | sha512 | base64
 # The default is sha256
 USEHASH=sha256'
 }
@@ -365,6 +365,9 @@ case $USEHASH in
 	;;
 	"md5")
 	previewname=$PREVIEWDIR/$(echo "$album $date" | md5sum | cut -d' ' -f1).png
+	;;
+	"base64")
+	previewname=$PREVIEWDIR/$(echo "$album $date" | base64 | cut -d' ' -f1).png
 	;;
 	"sha512")
 	previewname=$PREVIEWDIR/$(echo "$album $date" | sha512sum | cut -d' ' -f1).png
@@ -729,5 +732,6 @@ case $1 in
         menunotif;;
  
     *)
+	input=$1
         error unknown;;
 esac
