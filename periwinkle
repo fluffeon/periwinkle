@@ -48,8 +48,9 @@ function mkconfig() {
 #
 # Self-explanatory, you can set your MPD host here.
 # Usually the default will work but you can make it point to a custom URL.
-MPD_HOST="localhost"
-MPD_PORT="6600"
+MPD_HOST=localhost
+MPD_PORT=6600
+MPD_MUSICDIR='$HOME'/Music
 
 # DMENU COLORS
 #
@@ -64,6 +65,11 @@ DMENUCOL_BG=#2A2A2A
 DMENUCOL_FG=#ECECEC	
 DMENUCOL_SELECTBG=#000000
 DMENUCOL_SELECTFG=#70C0BA
+
+# PREVIEW SETTINGS
+#
+# Choose where to save the image previews
+PREVIEWDIR='$HOME'/periwinkle
 
 # NOTIFICATION SETTINGS
 #
@@ -80,6 +86,33 @@ TIMEOUT=3
 # none | md5 | sha256 | sha512
 # The default is sha256
 USEHASH=sha256'
+}
+
+# Function to check if a value is an integer
+is_integer() {
+  [[ "$1" =~ ^[0-9]+$ ]]
+}
+
+# Function to check if the integer is within the range 0-9999
+is_valid_integer() {
+  local num=$1
+  is_integer "$num" && (( num >= 0 && num <= 9999 ))
+}
+
+checknumbers() {
+# Read input and validate it until a valid integer in the range 0-9999 is provided
+while true; do
+  input=$1
+
+  if is_valid_integer "$input"; then
+    # Set the variable with the validated integer
+    integer_variable="$input"
+    break
+  else
+    echo "Error: '"$input"' is not a valid integer"
+    exit 1
+  fi
+done
 }
 
 if [ ! -f "$HOME/.config/periwinkle/config" ]; then
@@ -105,9 +138,7 @@ eliminate_comments() {
 }
 
 # Call the function and store the output in a Bash variable
-CLEANOUTPUT=$(eliminate_comments "$HOME/.config/periwinkle/config")
-
-echo "$CLEANOUTPUT" > /tmp/clean_output.txt
+$(eliminate_comments "$HOME/.config/periwinkle/config" > /tmp/clean_output.txt)
 
 more_config() {
     # Specify the desired environment variables here (space-separated list)
@@ -126,9 +157,8 @@ done < "/tmp/clean_output.txt"
 # Call the function to set the user configs
 more_config > /dev/null 2>&1 
 rm /tmp/clean_output.txt
-
-PREVIEWDIR="$HOME/periwinkle"
-MPD_MUSICDIR="$HOME/Music"
+checknumbers $MPD_PORT
+checknumbers $TIMEOUT
 
 if [ ! -d "$PREVIEWDIR" ]; then
 	mkdir -v $PREVIEWDIR
@@ -186,7 +216,7 @@ function error() {
 
 # Function to send commands to MPD which is netcat-agnostic
 function mpdcom {
-	echo -e "$1\nclose" | nc "localhost" "6600";
+	echo -e "$1\nclose" | nc "$MPD_HOST" "$MPD_PORT";
 }
 
 # Save the output to a variable so it isn't called everytime, improving performance
@@ -245,14 +275,16 @@ esac
 
 function mpdfunc()
 {
-    arglist=$1
- 
-    [ "$2" != "" ] &&                   arglist="$arglist $2"
+    arglist="$1"
+     
+    [ "$2" != "" ] &&                   arglist="$arglist "$2""
+    
     [ "$3" != "" ] && [ "$4" = "" ]  && arglist="$arglist \"$3\""
+    
     [ "$3" != "" ] && [ "$4" != "" ] && arglist="$arglist $3 \"$4\""
- 
+
     [ "$1" = "add" ] || [ "$1" = "save" ] || [ "$1" = "rm" ] && arglist="$1 \"$2\""
- 
+    
     mpdcom "$arglist" | cleanoutput
 }
 
@@ -267,8 +299,6 @@ case $prompt in
 	if [ "$daemonmode" = "true" ]; then
 		rm /tmp/dmenu_output.txt
 		dmenum &
-	else
-		cat /dev/null
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -287,8 +317,6 @@ case $prompt in
 	if [ "$daemonmode" = "true" ]; then
 		rm /tmp/dmenu_output.txt
 		dmenum
-	else
-		cat /dev/null
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -307,8 +335,6 @@ case $prompt in
 	if [ "$daemonmode" = "true" ]; then
 		rm /tmp/dmenu_output.txt
 		dmenum
-	else
-		cat /dev/null
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -324,8 +350,6 @@ case $prompt in
 	if [ "$daemonmode" = "true" ]; then
 		rm /tmp/dmenu_output.txt
 		dmenum
-	else
-		cat/dev/null
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -344,8 +368,6 @@ case $prompt in
 	if [ "$daemonmode" = "true" ]; then
 		rm /tmp/dmenu_output.txt
 		dmenum
-	else
-		cat /dev/null
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -360,7 +382,7 @@ case $prompt in
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	;;
     *)
-        cat /dev/null
+        echo -n
         ;;
 esac
 }
@@ -379,8 +401,6 @@ fi
 if [ -s /tmp/dmenu_output.txt ]; then
 	dmenu_condition=$(cat /tmp/dmenu_output.txt)
 	dmenum
-else
-	cat /dev/null
 fi
 
 # Clean up the temporary file
@@ -401,8 +421,6 @@ if [ -s /tmp/dmenu_output_daemon.txt ]; then
 	pkill -9 notify-send
 	dmenu_condition=$(cat /tmp/dmenu_output_daemon.txt)
 	dmenum
-else
-	cat /dev/null
 fi
 
 # Clean up the temporary file
@@ -416,7 +434,7 @@ mpd=("" "" "" "" "" "$artist - $title")
 
 # Show dmenu with the controls
 if [ -z "$dmenu_condition" ]; then
-	cat /dev/null
+	echo -n
 else
 	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
 fi
@@ -431,7 +449,6 @@ echo "The purpose of this feature is to make it so that you get MPD notification
 echo "even when you're not running it."
 echo ""
 echo "This feature is still experimental, so please beware of anything that might happen"
-set -x
 daemonmode=true
 currentsong
 setmetadata
@@ -466,6 +483,8 @@ fi
 done
 
 }
+
+
 
 # CLI actions
 case $1 in
@@ -516,8 +535,6 @@ case $1 in
 		dmenu_condition=$(cat /tmp/dmenu_output.txt)
 		dmenum
 		rm /tmp/dmenu_output.txt
-	else
-		cat /dev/null
 	fi
 	;;
 "notify")
@@ -529,7 +546,7 @@ case $1 in
 	mpdcom $2;;
 "daemon")
 	daemonize;;
-"clear" | "update" | "find" | "list" | "add" | "delete" | "save" | "rm" | "shuffle" | "crossfade" | "setvol")
+"clear" | "update" | "list" | "delete" | "shuffle" | "crossfade")
 	mpdfunc $*;;
 "config")
 	if [ $2 != "reset" ]; then
@@ -545,6 +562,25 @@ case $1 in
 		cat $HOME/.config/periwinkle/config
 	fi
 ;;
+"add" | "rm" | "find" | "save" | "setvol")
+	# This is a temporary fix to make the strings parse correctly.
+	# Ideally I'd want to edit "mpdfunc" directly to make it correct
+	if [ -n $3 ]; then
+		CORRECT_INPUT3=$3
+	fi
+
+	if [ -n $4 ]; then
+		CORRECT_INPUT4=$4
+	fi
+
+	if [ -n "$2" ]; then
+		CORRECT_INPUT2="$2"
+		mpdfunc $1 "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4"
+	else
+		echo "Error: Too few arguments"
+		exit 1
+	fi	
+	;;
 "statsfornerds")
 	setpreviewname
 	currentsong
@@ -566,7 +602,7 @@ case $1 in
 ;;
 "version")
 	programversion
-;;
+	;;
 "")
         menunotif;;
  
