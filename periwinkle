@@ -281,7 +281,7 @@ function help()
 	echo "	menu - Shows the dmenu prompt directly"
 	echo "	notify - Only shows a notification without actions"
 	echo "	info - Report version of Periwinkle, and licensing information"
-	echo "	config <reset> - Show your config file
+	echo "	config <reset> - Show your config file"
 	echo ""
 	echo "Advanced commands"
 	echo "	daemon - Run as a daemon to show song notifications on the background (experimental)"
