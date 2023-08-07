@@ -234,7 +234,7 @@ checknumbers "$TIMEOUT" decimal
 # Checks if TIMEOUT is a valid number that is NOT a string, but independently if it's an integer
 
 if [ ! -d "$PREVIEWDIR" ]; then
-	mkdir -v $PREVIEWDIR
+	mkdir -v "$PREVIEWDIR"
 fi
 
 # The config checking routines were made by ChatGPT. Thank you so much.
@@ -361,19 +361,19 @@ dmenu="dmenu -i -p "mpd:" -fn $DMENU_FONT -nb $DMENUCOL_BG -nf $DMENUCOL_FG -sb 
 function setpreviewname() {
 case $USEHASH in
 	"none")
-	previewname=$PREVIEWDIR/$(echo $album $date).png
+	previewname="$PREVIEWDIR"/"$(echo $album $date)".png
 	;;
 	"md5")
-	previewname=$PREVIEWDIR/$(echo "$album $date" | md5sum | cut -d' ' -f1).png
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png
 	;;
 	"base64")
-	previewname=$PREVIEWDIR/$(echo "$album $date" | base64 | cut -d' ' -f1).png
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png
 	;;
 	"sha512")
-	previewname=$PREVIEWDIR/$(echo "$album $date" | sha512sum | cut -d' ' -f1).png
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png
 	;;
 	"sha256" | "" | *)
-	previewname=$PREVIEWDIR/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png
 	;;	
 esac
 }
@@ -691,12 +691,12 @@ case $1 in
 "add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "delete")
 	# This is a temporary fix to make the strings parse correctly.
 	# Ideally I'd want to edit "mpdfunc" directly to make it correct
-	if [ -n $3 ]; then
-		CORRECT_INPUT3=$3
+	if [ -n "$3" ]; then
+		CORRECT_INPUT3="$3"
 	fi
 
-	if [ -n $4 ]; then
-		CORRECT_INPUT4=$4
+	if [ -n "$4" ]; then
+		CORRECT_INPUT4="$4"
 	fi
 
 	if [ -n "$2" ]; then
