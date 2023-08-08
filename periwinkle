@@ -402,9 +402,9 @@ case $prompt in
 	setmetadata
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		#dmenum &
-		exit 0
+		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
+		dmenum_daemon
+		
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -421,9 +421,8 @@ case $prompt in
 	setmetadata
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		#dmenum &
-		exit 0
+		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
+		dmenum_daemon
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -441,8 +440,7 @@ case $prompt in
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		#dmenum &
-		exit 0
+		dmenum_daemon
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -460,8 +458,7 @@ case $prompt in
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		#dmenum &
-		exit 0
+		dmenum_daemon
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -479,8 +476,7 @@ case $prompt in
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		#dmenum &
-		exit 0
+		dmenum_daemon
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -496,6 +492,8 @@ case $prompt in
 	;;
     *)
         echo -n
+
+	rm /tmp/dmenu_output.txt
         ;;
 esac
 }
@@ -533,7 +531,7 @@ fi
 if [ -s /tmp/dmenu_output_daemon.txt ]; then
 	pkill -9 notify-send
 	dmenu_condition=$(cat /tmp/dmenu_output_daemon.txt)
-	dmenum
+	dmenum_daemon
 fi
 
 # Clean up the temporary file
@@ -552,7 +550,30 @@ else
 	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
 fi
 
-notifselect
+}
+
+function dmenum_daemon() {
+
+# MPD Controls
+mpd=("" "" "" "" "" "$artist - $title")
+
+# Show dmenu with the controls
+if [ -s /tmp/pw_daemonmode ]; then
+	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
+	notifselect
+else
+	#prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
+	echo -n
+fi
+
+#if [ -s /tmp/pw_daemonmode ]; then
+#	rm /tmp/pw_daemonmode
+#	notifselect
+#	dmenum
+#	echo 'Daemon Mode' > /tmp/pw_daemonmode
+#else
+#	cat /dev/null
+#fi
 
 }
 
@@ -568,6 +589,7 @@ echo "The purpose of this feature is to make it so that you get MPD notification
 echo "even when you're not running it."
 echo ""
 echo "This feature is still experimental, so please beware of anything that might happen"
+set -x
 echo 'Daemon Mode' > /tmp/pw_daemonmode
 currentsong
 setmetadata
@@ -583,6 +605,7 @@ while true; do
 		currentsong
 		setmetadata
 		ffmpeg_routine
+		[ -s /tmp/dmenu_output_daemon.txt ]
 		menunotif_daemon
 		previoussong_daemon="$currentsong_daemon"
     	fi
@@ -635,7 +658,7 @@ case $1 in
 	setmetadata
 	ffmpeg_routine
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
-"'stop'")
+"stop")
 	prompt=""
 	notifselect
 	currentsong
