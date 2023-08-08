@@ -401,9 +401,10 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ "$daemonmode" = "true" ]; then
-		rm /tmp/dmenu_output.txt
-		dmenum &
+	if [ -s /tmp/pw_daemonmode ]; then
+		rm /tmp/dmenu_output.txt > /dev/null 2>&1
+		#dmenum &
+		exit 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -419,9 +420,10 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ "$daemonmode" = "true" ]; then
-		rm /tmp/dmenu_output.txt
-		dmenum
+	if [ -s /tmp/pw_daemonmode ]; then
+		rm /tmp/dmenu_output.txt > /dev/null 2>&1
+		#dmenum &
+		exit 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -437,9 +439,10 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ "$daemonmode" = "true" ]; then
-		rm /tmp/dmenu_output.txt
-		dmenum
+	if [ -s /tmp/pw_daemonmode ]; then
+		rm /tmp/dmenu_output.txt > /dev/null 2>&1
+		#dmenum &
+		exit 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -452,9 +455,13 @@ case $prompt in
 	;;
     "")
 	$(mpdcom stop) > /dev/null 2>&1
-	if [ "$daemonmode" = "true" ]; then
-		rm /tmp/dmenu_output.txt
-		dmenum
+	currentsong
+	setmetadata
+	ffmpeg_routine
+	if [ -s /tmp/pw_daemonmode ]; then
+		rm /tmp/dmenu_output.txt > /dev/null 2>&1
+		#dmenum &
+		exit 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -470,9 +477,10 @@ case $prompt in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ "$daemonmode" = "true" ]; then
-		rm /tmp/dmenu_output.txt
-		dmenum
+	if [ -s /tmp/pw_daemonmode ]; then
+		rm /tmp/dmenu_output.txt > /dev/null 2>&1
+		#dmenum &
+		exit 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -548,16 +556,23 @@ notifselect
 
 }
 
+function quitdaemon(){
+	echo 'Quitting...'
+	rm /tmp/pw_daemonmode
+	exit 0
+}
+
 function daemonize() {		
 echo "You're now running Periwinkle as a daemon!"
 echo "The purpose of this feature is to make it so that you get MPD notifications"
 echo "even when you're not running it."
 echo ""
 echo "This feature is still experimental, so please beware of anything that might happen"
-daemonmode=true
+echo 'Daemon Mode' > /tmp/pw_daemonmode
 currentsong
 setmetadata
 ffmpeg_routine
+trap quitdaemon SIGINT
 
 while true; do
 	currentsong
@@ -571,19 +586,6 @@ while true; do
 		menunotif_daemon
 		previoussong_daemon="$currentsong_daemon"
     	fi
-
-# Get the number of processes for the given command
-num_processes=$(ps -e -o cmd | grep "notify_send" | wc -l)
-
-# Check if the number of processes is greater than 10
-if [ $num_processes -gt 10 ]; then
-  # Kill all the processes of the given command
-  pkill "notify_send"
-  echo "Killed all processes of 'notify_send'."
-else
-  echo "No action required. 'notify_send' has $num_processes processes."
-fi
-
 	sleep 1
 done
 
