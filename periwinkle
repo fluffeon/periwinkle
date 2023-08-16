@@ -474,8 +474,7 @@ case $prompt in
 	fi
 	;;
     "")
-	set -x
-	    $(mpdcom next) > /dev/null 2>&1
+	$(mpdcom next) > /dev/null 2>&1
 	currentsong
 	setmetadata
 	ffmpeg_routine
