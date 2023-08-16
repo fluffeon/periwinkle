@@ -7,7 +7,7 @@ Conflicts=periwinkle-daemon.service
 
 [Service]
 ExecStart=/usr/bin/periwinkle daemon
-ExecStopPost=/bin/rm /tmp/daemonmode-lock
+ExecStopPost=/bin/rm /tmp/pw_daemonmode
 Restart=on-failure
 Slice=session.slice
 Environment=daemonmode=true
