@@ -404,6 +404,7 @@ case $prompt in
 	if [ -s /tmp/pw_daemonmode ]; then
 		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum_daemon
+		return 0
 		
 	fi
 
@@ -423,6 +424,7 @@ case $prompt in
 	if [ -s /tmp/pw_daemonmode ]; then
 		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum_daemon
+		return 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -441,6 +443,7 @@ case $prompt in
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum_daemon
+		return 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -459,6 +462,7 @@ case $prompt in
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum_daemon
+		return 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -470,13 +474,16 @@ case $prompt in
 	fi
 	;;
     "")
-	$(mpdcom next) > /dev/null 2>&1
+	set -x
+	    $(mpdcom next) > /dev/null 2>&1
 	currentsong
 	setmetadata
 	ffmpeg_routine
+
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum_daemon
+		return 0
 	fi
 
 	if [ -s /tmp/dmenu_output.txt ]; then
@@ -488,7 +495,11 @@ case $prompt in
 	fi
 	;;
     "$artist - $title")
+	if [ -s /tmp/pw_daemonmode ]; then
+		return 0
+	else
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi
 	;;
     *)
         echo -n
@@ -515,7 +526,7 @@ if [ -s /tmp/dmenu_output.txt ]; then
 fi
 
 # Clean up the temporary file
-rm /tmp/dmenu_output.txt
+rm /tmp/dmenu_output.txt > /dev/null 2>&1
 }
 
 function menunotif_daemon() {
@@ -548,11 +559,16 @@ if [ -z "$dmenu_condition" ]; then
 	echo -n
 else
 	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
+	notifselect
 fi
 
 }
 
 function dmenum_daemon() {
+
+if [ "$CLI" = "TRUE" ]; then
+		exit 0
+fi
 
 # MPD Controls
 mpd=("" "" "" "" "" "$artist - $title")
@@ -638,6 +654,7 @@ case $1 in
 "help")
         help;;
 "pause")
+	CLI="TRUE"
 	prompt=""
 	notifselect
 	currentsong
@@ -646,12 +663,18 @@ case $1 in
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "play")
 	prompt=""
+	CLI="TRUE"
 	notifselect
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	if [ -s /tmp/pw_daemonmode ]; then
+		exit 0
+	else
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi;;
 "prev" | "previous" | "backward")
+	CLI="TRUE"
 	prompt=""
 	notifselect
 	currentsong
@@ -659,6 +682,7 @@ case $1 in
 	ffmpeg_routine
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "stop")
+	CLI="TRUE"
 	prompt=""
 	notifselect
 	currentsong
@@ -666,6 +690,7 @@ case $1 in
 	ffmpeg_routine
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
 "next" | "forward")
+	CLI="TRUE"
 	prompt=""
 	notifselect
 	currentsong
@@ -757,6 +782,6 @@ case $1 in
         menunotif;;
  
     *)
-	input=$1
+	input="$1"
         error unknown;;
 esac
