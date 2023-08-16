@@ -40,7 +40,9 @@ case $1 in
 "wrongargs")
 	echo "Error: Wrong arguments for this command... :<"
 	exit 1;;
-
+"stopped")
+	echo "Error: You can't "$input" if you have no songs in your queue, silly! .w."
+	exit 1;;
 "" | *)
 	echo "Error: Something went wrong... o.O"
 	exit 1;;
@@ -155,7 +157,7 @@ is_integer() {
 
 # Function to check if the integer is within the desired range
 is_valid_integer() {
-  local num=$1
+  local num="$input"
   is_integer "$num" && (( num >= $MINIMUMVAL && num <= $MAXIMUMVAL ))
 }
 
@@ -324,6 +326,7 @@ function mpdcom {
 # Save the output to a variable so it isn't called everytime, improving performance
 function currentsong() {
 	stats="$(mpdcom currentsong | tr -d '\r')"
+	stats2="$(mpdcom status | tr -d '\r')"
 	mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
 	filename=$MPD_MUSICDIR/${mpc_file##*:}
 }
@@ -333,6 +336,7 @@ function setmetadata() {
 	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ {print $2}' | awk '{$1=$1};1')"
 	album=$(echo $stats | grep -oP '(?<=Album:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
 	date=$(echo $stats | grep -oP '(?<=Date:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')	
+	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ {print $2}' | awk '{$1=$1};1')"
 
 	if [ -z "$date" ]; then
 		date=""
@@ -748,6 +752,9 @@ case $1 in
 		CORRECT_INPUT4="$4"
 	fi
 
+	
+	
+
 	if [ -n "$2" ]; then
 		CORRECT_INPUT2="$2"
 		mpdfunc $1 "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4"
@@ -755,6 +762,27 @@ case $1 in
 		error fewargs
 	fi	
 	;;
+"seek")
+currentsong
+setmetadata
+
+if [ -n "$3" ]; then
+	error manyargs
+fi
+
+if [ -z "$songid" ]; then
+	input="$1" error stopped
+fi
+
+if [ -n "$2" ]; then
+	CORRECT_INPUT2=$2
+	MINIMUMVAL=0 MAXIMUMVAL=2147483647 checknumbers "$CORRECT_INPUT2" integer
+	mpdfunc seek "$songid" "$CORRECT_INPUT2"
+	exit 0
+else
+	error fewargs
+fi
+;;
 "statsfornerds")
 	setpreviewname
 	currentsong
@@ -774,6 +802,8 @@ case $1 in
 	echo
 	echo 'Hash: '"$USEHASH"
 ;;
+"console")
+	nc "$MPD_HOST" "$MPD_PORT";; 
 "info")
 	programinfo
 	;;
