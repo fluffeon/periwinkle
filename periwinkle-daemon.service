@@ -1,0 +1,17 @@
+[Unit]
+Description=Periwinkle
+Wants=display-manager.service mpd.service
+After=display-manager.service mpd.service
+BindsTo=mpd.service
+Conflicts=periwinkle-daemon.service
+
+[Service]
+ExecStart=/usr/bin/periwinkle daemon
+ExecStopPost=/bin/rm /tmp/daemonmode-lock
+Restart=on-failure
+Slice=session.slice
+Environment=daemonmode=true
+
+[Install]
+WantedBy=graphical.target
+Alias=periwinkle-daemon.service

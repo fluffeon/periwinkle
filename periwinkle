@@ -666,7 +666,11 @@ case $1 in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	if [ -s /tmp/pw_daemonmode ]; then
+		exit 0
+	else
+	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi;;
 "play")
 	prompt=""
 	CLI="TRUE"
@@ -677,7 +681,7 @@ case $1 in
 	if [ -s /tmp/pw_daemonmode ]; then
 		exit 0
 	else
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi;;
 "prev" | "previous" | "backward")
 	CLI="TRUE"
@@ -686,7 +690,11 @@ case $1 in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	if [ -s /tmp/pw_daemonmode ]; then
+		exit 0
+	else
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi;;
 "stop")
 	CLI="TRUE"
 	prompt=""
@@ -694,7 +702,11 @@ case $1 in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	if [ -s /tmp/pw_daemonmode ]; then
+		exit 0
+	else
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi;;
 "next" | "forward")
 	CLI="TRUE"
 	prompt=""
@@ -702,7 +714,11 @@ case $1 in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	if [ -s /tmp/pw_daemonmode ]; then
+		exit 0
+	else
+		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
+	fi;;
 "menu")
 	$(echo Open > /tmp/dmenu_output.txt)
 	currentsong
