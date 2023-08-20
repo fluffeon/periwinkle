@@ -3,7 +3,6 @@ Description=Periwinkle
 Wants=display-manager.service mpd.service
 After=display-manager.service mpd.service
 BindsTo=mpd.service
-Conflicts=periwinkle-daemon.service
 
 [Service]
 ExecStart=/usr/bin/periwinkle daemon

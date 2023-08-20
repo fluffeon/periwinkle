@@ -291,7 +291,7 @@ function help()
 	echo "Advanced commands"
 	echo "	daemon - Run as a daemon to show song notifications on the background (experimental)"
 	echo "	statsfornerds - Shows some environment variables related to Periwinkle"
-	echo "	direct - Interacts with the MPD server directly (advanced)"
+	echo "	console - Interacts with the MPD server directly (advanced)"
 	echo ""
 	echo "For now this client is a bit basic and stuff, but"
 	echo "I'm gonna keep developing it and it will have"
@@ -364,6 +364,10 @@ function ffmpeg_routine() {
 mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
 filename=$MPD_MUSICDIR/${mpc_file##*:}
 
+dmenuthing() {
+dmenu -i -p "$DMENU_TITLE" -fn "$DMENU_FONT" -nb "$DMENUCOL_BG" -nf "$DMENUCOL_FG" -sb "$DMENUCOL_SELECTBG" -sf "$DMENUCOL_SELECTFG"
+}
+
 function setpreviewname() {
 case $USEHASH in
 	"none")
@@ -401,7 +405,7 @@ function mpdfunc()
 
 function notifselect() { 
 # Execute the desired action
-case $prompt in
+case $1 in
     "")
 	$(mpdcom previous) > /dev/null 2>&1
 	currentsong
@@ -409,7 +413,7 @@ case $prompt in
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
 		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		dmenum_daemon
+		dmenum daemon
 		return 0
 		
 	fi
@@ -429,7 +433,7 @@ case $prompt in
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
 		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		dmenum_daemon
+		dmenum daemon
 		return 0
 	fi
 
@@ -448,7 +452,7 @@ case $prompt in
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		dmenum_daemon
+		dmenum daemon
 		return 0
 	fi
 
@@ -467,7 +471,7 @@ case $prompt in
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		dmenum_daemon
+		dmenum daemon
 		return 0
 	fi
 
@@ -487,7 +491,7 @@ case $prompt in
 
 	if [ -s /tmp/pw_daemonmode ]; then
 		rm /tmp/dmenu_output.txt > /dev/null 2>&1
-		dmenum_daemon
+		dmenum daemon
 		return 0
 	fi
 
@@ -506,8 +510,11 @@ case $prompt in
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi
 	;;
-    *)
-        echo -n
+	"seek" | "Seek" | "Volume" | "volume" | "setvol" | "CLI" | "cli")
+		dmenum $prompt
+	;;
+*)	
+    	prompt=$(echo -n)
 
 	rm /tmp/dmenu_output.txt
         ;;
@@ -531,7 +538,7 @@ if [ -s /tmp/dmenu_output.txt ]; then
 fi
 
 # Clean up the temporary file
-rm /tmp/dmenu_output.txt 2>&1 /dev/null 2>&1
+rm /tmp/dmenu_output.txt > /dev/null 2>&1
 }
 
 function menunotif_daemon() {
@@ -547,7 +554,7 @@ fi
 if [ -s /tmp/dmenu_output_daemon.txt ]; then
 	pkill -9 notify-send
 	dmenu_condition=$(cat /tmp/dmenu_output_daemon.txt)
-	dmenum_daemon
+	dmenum daemon
 fi
 
 # Clean up the temporary file
@@ -556,38 +563,70 @@ rm /tmp/dmenu_output_daemon.txt > /dev/null 2>&1
 
 function dmenum() {
 
-# MPD Controls
-DMENU_TITLE=mpd:
-dmenu="dmenu -i -p "$DMENU_TITLE" -fn "$DMENU_FONT" -nb "$DMENUCOL_BG" -nf "$DMENUCOL_FG" -sb "$DMENUCOL_SELECTBG" -sf "$DMENUCOL_SELECTFG""
-mpd=("" "" "" "" "" "$artist - $title" "Seek")
+# Default MPD options
+mpd=("" "" "" "" "" "seek" "setvol")
+
+# Different dmenu routines
+case $1 in
+# Daemon option
+"daemon")
+if [ "$CLI" = "TRUE" ]; then
+		exit 0
+fi
+
+# Show dmenu with the controls
+if [ -s /tmp/pw_daemonmode ]; then
+	DMENU_TITLE=" $artist - $title"
+	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
+	notifselect
+else
+	#prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
+	echo -n
+fi;;
+
+# Different commands
+"seek" | "Seek")
+
+if [ -z "$2" ]; then
+	DMENU_TITLE='Seek to where?'
+	prompt=$(echo -n | dmenuthing)
+	cli seek $prompt
+elif [ -n "$2" ]; then
+	theinput2=$2
+	cli seek $theinput2
+fi;;
+
+"Vol" | "volume" | "Volume" | "setvol" | "vol")
+if [ -z "$2" ]; then
+	DMENU_TITLE='Set volume (0-100)'
+	prompt=$(echo -n | dmenuthing)
+	cli setvol $prompt
+elif [ -n "$2" ]; then
+	theinput2=$2
+	cli setvol $theinput2
+fi;;
+
+"CLI" | "cli")
+	DMENU_TITLE='Enter your periwinkle cmd (debugging purposes)'
+	prompt=$(echo -n | dmenuthing)
+	cli "$prompt"
+;;
+
+# No arguments
+*)
 
 # Show dmenu with the controls
 if [ -z "$dmenu_condition" ]; then
 	echo -n
 else	
-	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
-	notifselect
-fi
+	DMENU_TITLE=" $artist - $title"
+	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
+	notifselect $prompt
+fi;;
+
+esac
 
 }
-
-function dmenum_daemon() {
-
-if [ "$CLI" = "TRUE" ]; then
-		exit 0
-fi
-
-# MPD Controls
-mpd=("" "" "" "" "" "$artist - $title")
-
-# Show dmenu with the controls
-if [ -s /tmp/pw_daemonmode ]; then
-	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
-	notifselect
-else
-	#prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
-	echo -n
-fi
 
 #if [ -s /tmp/pw_daemonmode ]; then
 #	rm /tmp/pw_daemonmode
@@ -598,9 +637,9 @@ fi
 #	cat /dev/null
 #fi
 
-}
 
-function quitdaemon(){
+
+function quitdaemon() {
 	echo 'Quitting...'
 	rm /tmp/pw_daemonmode
 	exit 0
@@ -627,6 +666,7 @@ while true; do
 		currentsong
 		setmetadata
 		ffmpeg_routine
+		echo 'Song changed to: '"'$title'"' by '"$artist"
 		[ -s /tmp/dmenu_output_daemon.txt ]
 		menunotif_daemon
 		previoussong_daemon="$currentsong_daemon"
@@ -656,13 +696,13 @@ fi
 }
 
 # CLI actions
+cli() {
 case $1 in
 "help")
         help;;
 "pause")
 	CLI="TRUE"
-	prompt=""
-	notifselect
+	notifselect  
 	currentsong
 	setmetadata
 	ffmpeg_routine
@@ -672,9 +712,8 @@ case $1 in
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi;;
 "play")
-	prompt=""
 	CLI="TRUE"
-	notifselect
+	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
@@ -685,8 +724,7 @@ case $1 in
 	fi;;
 "prev" | "previous" | "backward")
 	CLI="TRUE"
-	prompt=""
-	notifselect
+	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
@@ -697,8 +735,7 @@ case $1 in
 	fi;;
 "stop")
 	CLI="TRUE"
-	prompt=""
-	notifselect
+	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
@@ -709,8 +746,7 @@ case $1 in
 	fi;;
 "next" | "forward")
 	CLI="TRUE"
-	prompt=""
-	notifselect
+	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
@@ -736,8 +772,6 @@ case $1 in
 	setmetadata
 	ffmpeg_routine
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
-"direct")
-	mpdcom $2;;
 "daemon")
 	daemonize;;
 "clear" | "update" | "shuffle")
@@ -833,3 +867,13 @@ fi
 	input="$1"
         error unknown;;
 esac
+}
+
+if [ -z "$1" ]; then
+	cli
+elif [ -n "$1" ]; then
+	theinput=$1
+	theinput2=$2
+	theinput3=$3
+	cli $theinput $theinput2 $theinput3
+fi
