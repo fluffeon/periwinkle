@@ -510,7 +510,7 @@ case $1 in
 	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
 	fi
 	;;
-	"seek" | "Seek" | "Volume" | "volume" | "setvol" | "CLI" | "cli")
+	"seek" | "Seek" | "Volume" | "volume" | "setvol" | "vol" | "Vol" | "CLI" | "cli")
 		dmenum $prompt
 	;;
 *)	
