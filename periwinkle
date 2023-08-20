@@ -340,11 +340,28 @@ function setmetadata() {
 	album=$(echo $stats | grep -oP '(?<=Album:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
 	date=$(echo $stats | grep -oP '(?<=Date:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')	
 	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ {print $2}' | awk '{$1=$1};1')"
+	state="$(echo "$stats2" | awk -F ': ' '/^state:/ {print $2}' | awk '{$1=$1};1')" 
 
 	if [ -z "$date" ]; then
 		date=""
 	else
     		date="($date)"
+	fi
+
+	if [ -z "$mpc_file" ]; then
+		NOTIFYSEND_TITLE="Stopped"
+		NOTIFYSEND_SUBTITLE=""
+	else
+		NOTIFYSEND_TITLE="$title"
+		NOTIFYSEND_SUBTITLE="$(echo "$artist\n$album $date")"
+	fi 
+	
+	if [ "$state" = "stop" ]; then
+		NOTIFYSEND_STATUS=""
+	elif [ "$state" = "pause" ]; then
+		NOTIFYSEND_STATUS=""
+	elif [ "$state" = "play" ]; then
+		NOTIFYSEND_STATUS=""
 	fi
 }
 
@@ -366,6 +383,34 @@ filename=$MPD_MUSICDIR/${mpc_file##*:}
 
 dmenuthing() {
 dmenu -i -p "$DMENU_TITLE" -fn "$DMENU_FONT" -nb "$DMENUCOL_BG" -nf "$DMENUCOL_FG" -sb "$DMENUCOL_SELECTBG" -sf "$DMENUCOL_SELECTFG"
+}
+
+notifysendthing() {
+case $1 in
+	"action")	
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
+	if [ -z "$CONDITIONOPEN" ]; then
+		return 0
+	else
+	dmenum $CONDITIONOPEN
+	fi
+	;;
+
+"daemon")	
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
+	if [ -z $CONDITIONOPEN ]; then
+		return 0
+	fi
+
+	if [ -s /tmp/pw_daemonmode ]; then
+		CONDITIONOPEN=daemon
+		dmenum $CONDITIONOPEN
+	fi
+	;;
+
+	*)
+	notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname"
+esac
 }
 
 function setpreviewname() {
@@ -406,163 +451,92 @@ function mpdfunc()
 function notifselect() { 
 # Execute the desired action
 case $1 in
-    "")
+    "" | "prev" | "previous" | "backward")
 	$(mpdcom previous) > /dev/null 2>&1
 	currentsong
 	setmetadata
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum daemon
 		return 0
 		
 	fi
 
-	if [ -s /tmp/dmenu_output.txt ]; then
-		dmenu_condition=$(cat /tmp/dmenu_output.txt)
-		dmenum
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi
-        ;;
-    "")
+	notifysendthing action &
+	;;
+    "" | "pause")
 	$(mpdcom pause) > /dev/null 2>&1
 	currentsong
 	setmetadata
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		#rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum daemon
 		return 0
 	fi
-
-	if [ -s /tmp/dmenu_output.txt ]; then
-		dmenu_condition=$(cat /tmp/dmenu_output.txt)
-		dmenum
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi	
-	;;
-    "")
+	notifysendthing action &	;;
+    "" | "play")
 	$(mpdcom play) > /dev/null 2>&1
 	currentsong
 	setmetadata
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum daemon
 		return 0
 	fi
 
-	if [ -s /tmp/dmenu_output.txt ]; then
-		dmenu_condition=$(cat /tmp/dmenu_output.txt)
-		dmenum
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi
-	;;
-    "")
+	notifysendthing action &;;
+    "" | "stop")
 	$(mpdcom stop) > /dev/null 2>&1
 	currentsong
 	setmetadata
 	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum daemon
 		return 0
 	fi
 
-	if [ -s /tmp/dmenu_output.txt ]; then
-		dmenu_condition=$(cat /tmp/dmenu_output.txt)
-		dmenum
-		notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" &
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" &
-	fi
-	;;
-    "")
+	notifysendthing action &;;
+    "" | "next" | "forward")
 	$(mpdcom next) > /dev/null 2>&1
 	currentsong
 	setmetadata
 	ffmpeg_routine
 
 	if [ -s /tmp/pw_daemonmode ]; then
-		rm /tmp/dmenu_output.txt > /dev/null 2>&1
 		dmenum daemon
 		return 0
 	fi
 
-	if [ -s /tmp/dmenu_output.txt ]; then
-		dmenu_condition=$(cat /tmp/dmenu_output.txt)
-		dmenum
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi
-	;;
-    "$artist - $title")
-	if [ -s /tmp/pw_daemonmode ]; then
-		return 0
-	else
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi
-	;;
+	notifysendthing action &;;
 	"seek" | "Seek" | "Volume" | "volume" | "setvol" | "vol" | "Vol" | "CLI" | "cli")
-		dmenum $prompt
-	;;
+		dmenum $prompt;;
 *)	
-    	prompt=$(echo -n)
-
-	rm /tmp/dmenu_output.txt
-        ;;
+    	prompt=$(echo -n);;
 esac
 }
 
 # Menu
 function menunotif() {
+case $1 in
+
+"daemon")
 currentsong
 setmetadata
 ffmpeg_routine
-if [ -z "$title" ]; then
-	(notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output.txt)
-else
-	(notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output.txt)
-fi
+notifysendthing daemon &
+;;
 
-if [ -s /tmp/dmenu_output.txt ]; then
-	dmenu_condition=$(cat /tmp/dmenu_output.txt)
-	dmenum
-fi
-
-# Clean up the temporary file
-rm /tmp/dmenu_output.txt > /dev/null 2>&1
-}
-
-function menunotif_daemon() {
+*)
 currentsong
 setmetadata
 ffmpeg_routine
-if [ -z "$title" ]; then
-	(notify-send -t $TIMEOUT -u low -r 27072 " Stopped" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
-else
-	(notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" --action "Open=Menu" > /tmp/dmenu_output_daemon.txt)
-fi
+notifysendthing action &
+;;
 
-if [ -s /tmp/dmenu_output_daemon.txt ]; then
-	pkill -9 notify-send
-	dmenu_condition=$(cat /tmp/dmenu_output_daemon.txt)
-	dmenum daemon
-fi
-
-# Clean up the temporary file
-rm /tmp/dmenu_output_daemon.txt > /dev/null 2>&1
+esac
 }
 
 function dmenum() {
-
 # Default MPD options
 mpd=("" "" "" "" "" "seek" "setvol")
 
@@ -578,9 +552,9 @@ fi
 if [ -s /tmp/pw_daemonmode ]; then
 	DMENU_TITLE=" $artist - $title"
 	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
-	notifselect
+	notifselect $prompt
+	return 0
 else
-	#prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
 	echo -n
 fi;;
 
@@ -613,31 +587,20 @@ fi;;
 ;;
 
 # No arguments
-*)
+"open" | "Open")
 
 # Show dmenu with the controls
-if [ -z "$dmenu_condition" ]; then
-	echo -n
-else	
-	DMENU_TITLE=" $artist - $title"
-	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
-	notifselect $prompt
-fi;;
+DMENU_TITLE=" $artist - $title"
+prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
+notifselect $prompt
+exit 0
+;;
+"" | *)
+	echo ""
+;;
 
 esac
-
 }
-
-#if [ -s /tmp/pw_daemonmode ]; then
-#	rm /tmp/pw_daemonmode
-#	notifselect
-#	dmenum
-#	echo 'Daemon Mode' > /tmp/pw_daemonmode
-#else
-#	cat /dev/null
-#fi
-
-
 
 function quitdaemon() {
 	echo 'Quitting...'
@@ -661,16 +624,23 @@ while true; do
 	currentsong
 	setmetadata
 	currentsong_daemon="$title - $artist - $album $date"
+	currentstate="$state"
 
 	if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
 		currentsong
 		setmetadata
 		ffmpeg_routine
 		echo 'Song changed to: '"'$title'"' by '"$artist"
-		[ -s /tmp/dmenu_output_daemon.txt ]
-		menunotif_daemon
+		menunotif daemon
 		previoussong_daemon="$currentsong_daemon"
-    	fi
+    	elif [ "$currentstate" != "$previousstate" ]; then
+		currentsong
+		setmetadata
+		ffmpeg_routine
+		echo 'State changed to '"$currentstate"
+		menunotif daemon 
+		previousstate="$currentstate"
+	fi
 	sleep 1
 done
 
@@ -705,73 +675,47 @@ case $1 in
 	notifselect  
 	currentsong
 	setmetadata
-	ffmpeg_routine
-	if [ -s /tmp/pw_daemonmode ]; then
-		exit 0
-	else
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi;;
+	ffmpeg_routine	
+;;
 "play")
 	CLI="TRUE"
 	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ -s /tmp/pw_daemonmode ]; then
-		exit 0
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi;;
+;;
 "prev" | "previous" | "backward")
 	CLI="TRUE"
 	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ -s /tmp/pw_daemonmode ]; then
-		exit 0
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi;;
+	;;
 "stop")
 	CLI="TRUE"
 	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ -s /tmp/pw_daemonmode ]; then
-		exit 0
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi;;
+	;;
 "next" | "forward")
 	CLI="TRUE"
 	notifselect 
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	if [ -s /tmp/pw_daemonmode ]; then
-		exit 0
-	else
-		notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &
-	fi;;
+	;;
 "menu")
-	$(echo Open > /tmp/dmenu_output.txt)
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	dmenu_condition=Open
-	if [ -s /tmp/dmenu_output.txt ]; then
-		dmenu_condition=$(cat /tmp/dmenu_output.txt)
-		dmenum
-		rm /tmp/dmenu_output.txt
-	fi
+	dmenum open &
 	;;
 "notify")
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	notify-send -t $TIMEOUT -u low -r 27072 " $title" "$artist \n$album $date" -i "$previewname" &;;
+	notifysendthing;;
 "daemon")
 	daemonize;;
 "clear" | "update" | "shuffle")
