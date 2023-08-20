@@ -363,7 +363,6 @@ function ffmpeg_routine() {
 # Fetch some stuff, better not change this
 mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
 filename=$MPD_MUSICDIR/${mpc_file##*:}
-dmenu="dmenu -i -p "mpd:" -fn $DMENU_FONT -nb $DMENUCOL_BG -nf $DMENUCOL_FG -sb $DMENUCOL_SELECTBG -sf $DMENUCOL_SELECTFG"
 
 function setpreviewname() {
 case $USEHASH in
@@ -532,7 +531,7 @@ if [ -s /tmp/dmenu_output.txt ]; then
 fi
 
 # Clean up the temporary file
-rm /tmp/dmenu_output.txt > /dev/null 2>&1
+rm /tmp/dmenu_output.txt 2>&1 /dev/null 2>&1
 }
 
 function menunotif_daemon() {
@@ -552,18 +551,20 @@ if [ -s /tmp/dmenu_output_daemon.txt ]; then
 fi
 
 # Clean up the temporary file
-rm /tmp/dmenu_output_daemon.txt
+rm /tmp/dmenu_output_daemon.txt > /dev/null 2>&1
 }
 
 function dmenum() {
 
 # MPD Controls
-mpd=("" "" "" "" "" "$artist - $title")
+DMENU_TITLE=mpd:
+dmenu="dmenu -i -p "$DMENU_TITLE" -fn "$DMENU_FONT" -nb "$DMENUCOL_BG" -nf "$DMENUCOL_FG" -sb "$DMENUCOL_SELECTBG" -sf "$DMENUCOL_SELECTFG""
+mpd=("" "" "" "" "" "$artist - $title" "Seek")
 
 # Show dmenu with the controls
 if [ -z "$dmenu_condition" ]; then
 	echo -n
-else
+else	
 	prompt=$(printf '%s\n' "${mpd[@]}" | $dmenu)
 	notifselect
 fi
@@ -611,7 +612,6 @@ echo "The purpose of this feature is to make it so that you get MPD notification
 echo "even when you're not running it."
 echo ""
 echo "This feature is still experimental, so please beware of anything that might happen"
-set -x
 echo 'Daemon Mode' > /tmp/pw_daemonmode
 currentsong
 setmetadata
@@ -621,7 +621,7 @@ trap quitdaemon SIGINT
 while true; do
 	currentsong
 	setmetadata
-	currentsong_daemon="$title"
+	currentsong_daemon="$title - $artist - $album $date"
 
 	if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
 		currentsong
