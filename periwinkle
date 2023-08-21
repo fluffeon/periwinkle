@@ -207,13 +207,9 @@ case $1 in
 	fi
 	;;
 
-"welcome")
-	notify-send -t 7000 -u normal "$(echo 'Welcome to Periwinkle!')" "$(echo "It looks like it's your first time running Periwinkle. I've went ahead and created a config file for you at:\n\n$HOME/.config/periwinkle")"
-	;;
+"welcome") notify-send -t 7000 -u normal "$(echo 'Welcome to Periwinkle!')" "$(echo "It looks like it's your first time running Periwinkle. I've went ahead and created a config file for you at:\n\n$HOME/.config/periwinkle")";;
 
-*)
-	notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname";;
-
+*) notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname";;
 esac
 }
 
@@ -291,55 +287,54 @@ function cleanoutput() {
 awk '!/^OK.*$/'
 }
 
-function help()
-{
-	echo "Periwinkle - The cutest MPD client"
-	echo ""
-	echo "This is a CLI and also a semi-GUI client that can"
-	echo "be integrated into a DWM desktop by the use of"
-	echo "dunst and dmenu, if you'd like."
-	echo ""
-	echo "Usage: periwinkle [<command> <arguments> ... <more args>]"
-	echo
-	echo "Fetch Commands"
-	echo "	add <file> - Adds a song from the music dir to the playlist"
-	echo "	delete <int song> - Removes a song from the playlist"
-	echo "	list <metadata arg1> [<metadata arg2> <search term>] - Fetches a list of songs based on the metadata input by the user"
-	echo ""
-	echo "Playback Commands"
-	echo "	pause - Toggles between pause and play"
-	echo "	play - Play the current song"
-	echo "	stop - Stops the playlist completely"
-	echo "	prev, previous - Goes to the previous song on the queue"
-	echo "	next, forward - Goes to the next song on the queue"
-	echo "	setvol <0 - 100> - Sets the volume"
-	echo "	seek <num> - Seeks to a certain point of the song"
-	echo "  single <0-1> - Sets single mode"
-	echo "	random <0-1> - Sets random mode"
-	echo "	repeat <0-1> - Sets repeat mode"
-	echo ""
-	echo "Playlist Commands"
-	echo "	crossfade <int> - Sets a crossfade between songs"
-	echo "	shuffle - Shuffles the playlist"
-	echo "	save <string playlist name> - Saves the playlist as a file"
-	echo "	rm <string playlist name> - Deletes a saved playlist"
-	echo ""
-	echo "Database Commands"
-	echo "	update - Updates the MPD database"
-	echo ""
-	echo "Periwinkle Commands"
-	echo "	menu - Shows the dmenu prompt directly"
-	echo "	info - Report version of Periwinkle, and licensing information"
-	echo "	config <reset> - Show your config file"
-	echo ""
-	echo "Advanced commands"
-	echo "	daemon - Run as a daemon to show song notifications on the background (experimental)"
-	echo "	statsfornerds - Shows some environment variables related to Periwinkle"
-	echo "	console - Interacts with the MPD server directly (advanced)"
-	echo ""
-	echo "For now this client is a bit basic and stuff, but"
-	echo "I'm gonna keep developing it and it will have"
-	echo "more features in the future."
+function help() {
+echo "Periwinkle - The cutest MPD client
+
+This is a CLI and also a semi-GUI client that can
+be integrated into a DWM desktop by the use of
+dunst and dmenu, if you'd like.
+
+Usage: periwinkle [<command> <arguments> ... <more args>]
+
+Fetch Commands
+	add <file> - Adds a song from the music dir to the playlist
+	delete <int song> - Removes a song from the playlist
+	list <metadata arg1> [<metadata arg2> <search term>] - Fetches a list of songs based on the metadata input by the user
+
+Playback Commands
+	pause - Toggles between pause and play
+	play - Play the current song
+	stop - Stops the playlist completely
+	prev, previous - Goes to the previous song on the queue
+	next, forward - Goes to the next song on the queue
+	setvol <0 - 100> - Sets the volume
+	seek <num> - Seeks to a certain point of the song
+	single <0-1> - Sets single mode
+	random <0-1> - Sets random mode
+	repeat <0-1 or oneshot> - Sets repeat mode
+
+Playlist Commands
+	crossfade <int> - Sets a crossfade between songs
+	shuffle - Shuffles the playlist
+	save <string playlist name> - Saves the playlist as a file
+	rm <string playlist name> - Deletes a saved playlist
+
+Database Commands
+	update - Updates the MPD database
+
+Periwinkle Commands
+	menu - Shows the dmenu prompt directly
+	info - Report version of Periwinkle, and licensing information
+	config <reset> - Show your config file
+
+Advanced commands
+	daemon - Run as a daemon to show song notifications on the background (experimental)
+	statsfornerds - Shows some environment variables related to Periwinkle
+	console - Interacts with the MPD server directly (advanced)
+
+For now this client is a bit basic and stuff, but
+I'm gonna keep developing it and it will have
+more features in the future."
 }
 
 function programinfo() {
@@ -366,9 +361,7 @@ function programinfo() {
 }
 
 # Function to send commands to MPD which is netcat-agnostic
-function mpdcom {
-	echo -e "$1\nclose" | nc "$MPD_HOST" "$MPD_PORT";
-}
+function mpdcom { echo -e "$1\nclose" | nc "$MPD_HOST" "$MPD_PORT"; }
 
 # Save the output to a variable so it isn't called everytime, improving performance
 function currentsong() {
@@ -409,17 +402,11 @@ function setmetadata() {
 	fi
 }
 
-function ffmpeg_routine() {
-	# Comment [ -e "$previewname" ] || if you want the album cover to be constantly overwritten by FFMPEG when it yanks it. Although it makes it very slow and I don't recommend changing it
-	# previewname=$PREVIEWDIR/$(echo "$album $date" | sha256sum | cut -d' ' -f1).png
+function ffmpeg_routine() {	
 	setpreviewname
 	[ -e "$previewname" ] || 
 	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
 }
-
-# Settings
-#MPDMUSIC_DIR="$HOME/Music"
-# PREVIEWDIR="$HOME/ncmpcpp/previews"
 
 # Fetch some stuff, better not change this
 mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
@@ -486,8 +473,7 @@ case $1 in
 	notifysendthing action &;;
 	"seek" | "Seek" | "Volume" | "volume" | "setvol" | "vol" | "Vol" | "CLI" | "cli")
 		dmenum $prompt;;
-*)	
-    	prompt=$(echo -n);;
+*) prompt=$(echo -n);;
 esac
 }
 
@@ -571,8 +557,7 @@ else
 fi
 ;;
 
-"" | *)
-	echo "";;
+"" | *) echo "";;
 esac
 }
 
@@ -643,8 +628,7 @@ fi
 # CLI actions
 cli() {
 case $1 in
-"help")
-        help;;
+"help") help;;
 "pause" | "play" | "prev" | "previous" | "backward" | "stop" | "next" | "forward")
 	theinput3=$1
 	CLI="TRUE"
@@ -657,10 +641,8 @@ case $1 in
 	currentsong
 	setmetadata
 	ffmpeg_routine
-	dmenum open &
-	;;
-"daemon")
-	daemonize;;
+	dmenum open &;;
+"daemon") daemonize;;
 "clear" | "update" | "shuffle")
 	if [ -z $2 ]; then
 		mpdfunc $*;
@@ -744,15 +726,10 @@ fi
 ;;
 "console")
 	nc "$MPD_HOST" "$MPD_PORT";; 
-"info")
-	programinfo
-	;;
-"")
-        notifysendthing action &;;
+"info") programinfo;;
+"") notifysendthing action &;;
  
-    *)
-	input="$1"
-        error unknown;;
+*) input="$1" error unknown;;
 esac
 }
 
