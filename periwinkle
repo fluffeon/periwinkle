@@ -63,15 +63,6 @@ function whichone() {
 		"awk")
 			echo "Dependency missing: 'awk' is required but not found. Please install it."
 			exit 1;;
-
-		"sed")
-			echo "Dependency missing: 'sed' is required but not found. Please install it."
-			exit 1;;
-
-		"grep")
-			echo "Dependency missing: 'grep' is required but not found. Please install it."
-			exit 1;;
-
 		"dmenu")
 			echo "Dependency missing: 'dmenu' is required but not found. Please install it."
                         exit 1;;
@@ -82,7 +73,7 @@ function whichone() {
 	esac
 }
 
-dependencies=("sed" "nc" "awk" "notify-send" "dmenu" "ffmpeg")
+dependencies=("nc" "awk" "notify-send" "dmenu" "ffmpeg")
 
 for cmd in "${dependencies[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
@@ -297,7 +288,7 @@ TIMEOUT=$(awk "BEGIN { printf(\"%.0f\", $TIMEOUT * 1000) }" | awk '{sub(/%$/,"")
 
 # Clean the stinky output
 function cleanoutput() {
-sed "/^OK.*$/d"
+awk '!/^OK.*$/'
 }
 
 function help()
@@ -385,11 +376,11 @@ function currentsong() {
 	filename=$MPD_MUSICDIR/${mpc_file##*:}
 }
 
-function setmetadata() {
-	title=$(echo $stats | grep -oP '(?<=Title:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
+function setmetadata() {	
+	title="$(echo "$stats" | awk -F ': ' '/^Title:/ {print $2}' | awk '{$1=$1};1')"
 	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ {print $2}' | awk '{$1=$1};1')"
-	album=$(echo $stats | grep -oP '(?<=Album:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')
-	date=$(echo $stats | grep -oP '(?<=Date:\s).*?(?=\s(?:Title:|Album:|Track:|Date:|Genre:|Disc:|Time:|duration:|Pos:|Id:|$))')	
+	album="$(echo "$stats" | awk -F ': ' '/^Album:/ {print $2}' | awk '{$1=$1};1')"
+	date="$(echo "$stats" | awk -F ': ' '/^Date:/ {print $2}' | awk '{$1=$1};1')"	
 	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ {print $2}' | awk '{$1=$1};1')"
 	state="$(echo "$stats2" | awk -F ': ' '/^state:/ {print $2}' | awk '{$1=$1};1')" 
 
