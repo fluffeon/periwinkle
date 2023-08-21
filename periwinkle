@@ -506,15 +506,20 @@ mpd=("" "" "" "" "" "seek" "setvol")
 case $1 in
 # Daemon option
 "daemon")
+currentsong
+setmetadata
 if [ "$CLI" = "TRUE" ]; then
 		exit 0
 fi
 
+if [ -z "$mpc_file" ]; then
+		DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+	else
+		DMENU_TITLE="$NOTIFYSEND_STATUS $artist - $title"
+	fi
+
 # Show dmenu with the controls
-if [ -s /tmp/pw_daemonmode ]; then
-	currentsong
-	setmetadata
-	DMENU_TITLE=" $artist - $title"
+if [ -s /tmp/pw_daemonmode ]; then	
 	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
 	notifselect $prompt &
 fi
@@ -558,7 +563,12 @@ cli "$prompt";;
 # Show dmenu with the controls
 currentsong
 setmetadata
-DMENU_TITLE=" $artist - $title"
+if [ -z "$mpc_file" ]; then
+	DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+else
+	DMENU_TITLE="$NOTIFYSEND_STATUS $artist - $title"
+fi
+
 prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
 notifselect $prompt
 if [ -z "$prompt" ]; then
