@@ -326,7 +326,6 @@ function help()
 	echo ""
 	echo "Periwinkle Commands"
 	echo "	menu - Shows the dmenu prompt directly"
-	echo "	notify - Only shows a notification without actions"
 	echo "	info - Report version of Periwinkle, and licensing information"
 	echo "	config <reset> - Show your config file"
 	echo ""
@@ -657,11 +656,6 @@ case $1 in
 	ffmpeg_routine
 	dmenum open &
 	;;
-"notify")
-	currentsong
-	setmetadata
-	ffmpeg_routine
-	notifysendthing;;
 "daemon")
 	daemonize;;
 "clear" | "update" | "shuffle")
