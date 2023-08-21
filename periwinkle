@@ -190,15 +190,66 @@ esac
 # done
 }
 
+notifysendthing() {
+case $1 in
+	"action")
+		currentsong
+		setmetadata
+		ffmpeg_routine
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
+	if [ -z "$CONDITIONOPEN" ]; then
+		return 0
+	else
+	dmenum $CONDITIONOPEN
+	fi
+	;;
+
+"daemon")	
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
+	if [ -z $CONDITIONOPEN ]; then
+		return 0
+	fi
+
+	if [ -s /tmp/pw_daemonmode ]; then
+		CONDITIONOPEN=daemon
+		dmenum $CONDITIONOPEN
+	fi
+	;;
+
+"welcome")
+	notify-send -t 7000 -u normal "$(echo 'Welcome to Periwinkle!')" "$(echo "It looks like it's your first time running Periwinkle. I've went ahead and created a config file for you at:\n\n$HOME/.config/periwinkle")"
+	;;
+
+*)
+	notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname";;
+
+esac
+}
+
+function setpreviewname() {
+case $USEHASH in
+	"none")
+	previewname="$PREVIEWDIR"/"$(echo $album $date)".png
+	;;
+	"md5")
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png
+	;;
+	"base64")
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png
+	;;
+	"sha512")
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png
+	;;
+	"sha256" | "" | *)
+	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png
+	;;	
+esac
+}
+
 if [ ! -f "$HOME/.config/periwinkle/config" ]; then
 	mkdir $HOME/.config/periwinkle > /dev/null 2>&1
 	$(mkconfig > $HOME/.config/periwinkle/config 2>&1)	
-	echo "Hello! It looks like it's your first time running Periwinkle."
-	echo "I've went ahead and created a config file for you at:"
-	echo $HOME'/.config/periwinkle'
-	echo -n
-	echo "You can tinker with the settings of the program if you'd like."
-	echo 'Enjoy! ^w^'
+	notifysendthing welcome &
 fi
 
 eliminate_comments() {
@@ -385,54 +436,6 @@ dmenuthing() {
 dmenu -i -p "$DMENU_TITLE" -fn "$DMENU_FONT" -nb "$DMENUCOL_BG" -nf "$DMENUCOL_FG" -sb "$DMENUCOL_SELECTBG" -sf "$DMENUCOL_SELECTFG"
 }
 
-notifysendthing() {
-case $1 in
-	"action")	
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
-	if [ -z "$CONDITIONOPEN" ]; then
-		return 0
-	else
-	dmenum $CONDITIONOPEN
-	fi
-	;;
-
-"daemon")	
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
-	if [ -z $CONDITIONOPEN ]; then
-		return 0
-	fi
-
-	if [ -s /tmp/pw_daemonmode ]; then
-		CONDITIONOPEN=daemon
-		dmenum $CONDITIONOPEN
-	fi
-	;;
-
-	*)
-	notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname"
-esac
-}
-
-function setpreviewname() {
-case $USEHASH in
-	"none")
-	previewname="$PREVIEWDIR"/"$(echo $album $date)".png
-	;;
-	"md5")
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png
-	;;
-	"base64")
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png
-	;;
-	"sha512")
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png
-	;;
-	"sha256" | "" | *)
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png
-	;;	
-esac
-}
-
 function mpdfunc()
 {
     arglist="$1"
@@ -453,11 +456,7 @@ function notifselect() {
 case $1 in
     "" | "prev" | "previous" | "backward")
 	$(mpdcom previous) > /dev/null 2>&1
-	currentsong
-	setmetadata
-	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		dmenum daemon
 		return 0
 		
 	fi
@@ -465,45 +464,29 @@ case $1 in
 	notifysendthing action &
 	;;
     "" | "pause")
-	$(mpdcom pause) > /dev/null 2>&1
-	currentsong
-	setmetadata
-	ffmpeg_routine
+	$(mpdcom pause) > /dev/null 2>&1	
 	if [ -s /tmp/pw_daemonmode ]; then
-		dmenum daemon
 		return 0
 	fi
-	notifysendthing action &	;;
+	notifysendthing action &
+	;;
     "" | "play")
 	$(mpdcom play) > /dev/null 2>&1
-	currentsong
-	setmetadata
-	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		dmenum daemon
 		return 0
 	fi
 
 	notifysendthing action &;;
     "" | "stop")
 	$(mpdcom stop) > /dev/null 2>&1
-	currentsong
-	setmetadata
-	ffmpeg_routine
 	if [ -s /tmp/pw_daemonmode ]; then
-		dmenum daemon
 		return 0
 	fi
 
 	notifysendthing action &;;
     "" | "next" | "forward")
 	$(mpdcom next) > /dev/null 2>&1
-	currentsong
-	setmetadata
-	ffmpeg_routine
-
 	if [ -s /tmp/pw_daemonmode ]; then
-		dmenum daemon
 		return 0
 	fi
 
@@ -512,27 +495,6 @@ case $1 in
 		dmenum $prompt;;
 *)	
     	prompt=$(echo -n);;
-esac
-}
-
-# Menu
-function menunotif() {
-case $1 in
-
-"daemon")
-currentsong
-setmetadata
-ffmpeg_routine
-notifysendthing daemon &
-;;
-
-*)
-currentsong
-setmetadata
-ffmpeg_routine
-notifysendthing action &
-;;
-
 esac
 }
 
@@ -550,17 +512,22 @@ fi
 
 # Show dmenu with the controls
 if [ -s /tmp/pw_daemonmode ]; then
+	currentsong
+	setmetadata
 	DMENU_TITLE=" $artist - $title"
 	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
-	notifselect $prompt
+	notifselect $prompt &
+fi
+
+if [ -z "$prompt" ]; then
 	return 0
 else
-	echo -n
-fi;;
+	dmenum daemon
+fi
+;;
 
 # Different commands
 "seek" | "Seek")
-
 if [ -z "$2" ]; then
 	DMENU_TITLE='Seek to where?'
 	prompt=$(echo -n | dmenuthing)
@@ -581,24 +548,28 @@ elif [ -n "$2" ]; then
 fi;;
 
 "CLI" | "cli")
-	DMENU_TITLE='Enter your periwinkle cmd (debugging purposes)'
-	prompt=$(echo -n | dmenuthing)
-	cli "$prompt"
-;;
+DMENU_TITLE='Enter your periwinkle cmd (debugging purposes)'
+prompt=$(echo -n | dmenuthing)
+cli "$prompt";;
 
 # No arguments
 "open" | "Open")
 
 # Show dmenu with the controls
+currentsong
+setmetadata
 DMENU_TITLE=" $artist - $title"
 prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
 notifselect $prompt
-exit 0
-;;
-"" | *)
-	echo ""
+if [ -z "$prompt" ]; then
+	exit 0
+else
+	dmenum Open
+fi
 ;;
 
+"" | *)
+	echo "";;
 esac
 }
 
@@ -618,6 +589,7 @@ echo 'Daemon Mode' > /tmp/pw_daemonmode
 currentsong
 setmetadata
 ffmpeg_routine
+previousstate="$state"
 trap quitdaemon SIGINT
 
 while true; do
@@ -631,17 +603,17 @@ while true; do
 		setmetadata
 		ffmpeg_routine
 		echo 'Song changed to: '"'$title'"' by '"$artist"
-		menunotif daemon
+		notifysendthing daemon &
 		previoussong_daemon="$currentsong_daemon"
     	elif [ "$currentstate" != "$previousstate" ]; then
 		currentsong
 		setmetadata
 		ffmpeg_routine
 		echo 'State changed to '"$currentstate"
-		menunotif daemon 
+		notifysendthing daemon &
 		previousstate="$currentstate"
 	fi
-	sleep 1
+	sleep 0,5
 done
 
 }
@@ -670,41 +642,14 @@ cli() {
 case $1 in
 "help")
         help;;
-"pause")
+"pause" | "play" | "prev" | "previous" | "backward" | "stop" | "next" | "forward")
+	theinput3=$1
 	CLI="TRUE"
-	notifselect  
+	notifselect $theinput3 
 	currentsong
 	setmetadata
 	ffmpeg_routine	
 ;;
-"play")
-	CLI="TRUE"
-	notifselect 
-	currentsong
-	setmetadata
-	ffmpeg_routine
-;;
-"prev" | "previous" | "backward")
-	CLI="TRUE"
-	notifselect 
-	currentsong
-	setmetadata
-	ffmpeg_routine
-	;;
-"stop")
-	CLI="TRUE"
-	notifselect 
-	currentsong
-	setmetadata
-	ffmpeg_routine
-	;;
-"next" | "forward")
-	CLI="TRUE"
-	notifselect 
-	currentsong
-	setmetadata
-	ffmpeg_routine
-	;;
 "menu")
 	currentsong
 	setmetadata
@@ -805,7 +750,7 @@ fi
 	programinfo
 	;;
 "")
-        menunotif;;
+        notifysendthing action &;;
  
     *)
 	input="$1"
