@@ -314,6 +314,9 @@ function help()
 	echo "	next, forward - Goes to the next song on the queue"
 	echo "	setvol <0 - 100> - Sets the volume"
 	echo "	seek <num> - Seeks to a certain point of the song"
+	echo "  single <0-1> - Sets single mode"
+	echo "	random <0-1> - Sets random mode"
+	echo "	repeat <0-1> - Sets repeat mode"
 	echo ""
 	echo "Playlist Commands"
 	echo "	crossfade <int> - Sets a crossfade between songs"
@@ -678,7 +681,7 @@ case $1 in
 		cat $HOME/.config/periwinkle/config
 	fi
 ;;
-"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "delete")
+"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "repeat")
 	# This is a temporary fix to make the strings parse correctly.
 	# Ideally I'd want to edit "mpdfunc" directly to make it correct
 	if [ -n "$3" ]; then
