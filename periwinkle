@@ -309,9 +309,9 @@ Playback Commands
 	next, forward - Goes to the next song on the queue
 	setvol <0 - 100> - Sets the volume
 	seek <num> - Seeks to a certain point of the song
-	single <0-1> - Sets single mode
+	single <0-1 or oneshot> - Sets single mode
 	random <0-1> - Sets random mode
-	repeat <0-1 or oneshot> - Sets repeat mode
+	repeat <0-1> - Sets repeat mode
 
 Playlist Commands
 	crossfade <int> - Sets a crossfade between songs
