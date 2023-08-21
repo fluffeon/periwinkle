@@ -377,12 +377,12 @@ function currentsong() {
 }
 
 function setmetadata() {	
-	title="$(echo "$stats" | awk -F ': ' '/^Title:/ {print $2}' | awk '{$1=$1};1')"
-	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ {print $2}' | awk '{$1=$1};1')"
-	album="$(echo "$stats" | awk -F ': ' '/^Album:/ {print $2}' | awk '{$1=$1};1')"
-	date="$(echo "$stats" | awk -F ': ' '/^Date:/ {print $2}' | awk '{$1=$1};1')"	
-	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ {print $2}' | awk '{$1=$1};1')"
-	state="$(echo "$stats2" | awk -F ': ' '/^state:/ {print $2}' | awk '{$1=$1};1')" 
+	title="$(echo "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
+	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ { sub(/^Artist: /, ""); print }')"
+	album="$(echo "$stats" | awk -F ': ' '/^Album:/ { sub(/^Album: /, ""); print }')"
+	date="$(echo "$stats" | awk -F ': ' '/^Date:/ { sub(/^Date: /, ""); print }')"
+	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')"
+	state="$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"	
 
 	if [ -z "$date" ]; then
 		date=""
