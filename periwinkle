@@ -312,12 +312,15 @@ Playback Commands
 	single <0-1 or oneshot> - Sets single mode
 	random <0-1> - Sets random mode
 	repeat <0-1> - Sets repeat mode
+	consume <0-1> - Sets consume mode
 
 Playlist Commands
 	crossfade <int> - Sets a crossfade between songs
 	shuffle - Shuffles the playlist
 	save <string playlist name> - Saves the playlist as a file
 	rm <string playlist name> - Deletes a saved playlist
+	playlist - Shows the current playlist and song IDs
+	delete - Removes a song from the current playlist
 
 Database Commands
 	update - Updates the MPD database
@@ -330,7 +333,8 @@ Periwinkle Commands
 Advanced commands
 	daemon - Run as a daemon to show song notifications on the background (experimental)
 	statsfornerds - Shows some environment variables related to Periwinkle
-	console - Interacts with the MPD server directly (advanced)
+	console - Pulls an interactive MPD control terminal (advanced)
+	direct - Sends commands to MPD without being interactive, useful for scripts
 
 For now this client is a bit basic and stuff, but
 I'm gonna keep developing it and it will have
@@ -643,7 +647,7 @@ case $1 in
 	ffmpeg_routine
 	dmenum open &;;
 "daemon") daemonize;;
-"clear" | "update" | "shuffle")
+"clear" | "update" | "shuffle" | "playlist")
 	if [ -z $2 ]; then
 		mpdfunc $*;
 	else
@@ -658,14 +662,18 @@ case $1 in
 	elif [ $2 = "reset" ]; then
 		resetpericonfig	
 	else
-		echo 'Location: '$HOME/,config/periwinkle/config
+		echo 'Location: '"$HOME"'/.config/periwinkle/config'
 		echo ""
 		cat $HOME/.config/periwinkle/config
 	fi
 ;;
-"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "repeat")
+"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "consume" | "repeat" | "delete" | "direct")
 	# This is a temporary fix to make the strings parse correctly.
 	# Ideally I'd want to edit "mpdfunc" directly to make it correct
+	if [ -n "$2" ]; then
+		CORRECT_INPUT2="$2"
+	fi
+
 	if [ -n "$3" ]; then
 		CORRECT_INPUT3="$3"
 	fi
@@ -674,12 +682,14 @@ case $1 in
 		CORRECT_INPUT4="$4"
 	fi
 
-	
-	
+	if [ -n "$5" ]; then
+		CORRECT_INPUT5="$5"
+	fi
 
-	if [ -n "$2" ]; then
-		CORRECT_INPUT2="$2"
-		mpdfunc $1 "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4"
+	if [ "$1" = "direct" ]; then
+		mpdfunc "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
+	elif [ -n "$2" ]; then
+		mpdfunc $1 "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
 	else
 		error fewargs
 	fi	
@@ -724,11 +734,9 @@ fi
 	echo
 	echo 'Hash: '"$USEHASH"
 ;;
-"console")
-	nc "$MPD_HOST" "$MPD_PORT";; 
+"console") nc "$MPD_HOST" "$MPD_PORT";;
 "info") programinfo;;
-"") notifysendthing action &;;
- 
+"") notifysendthing action &;; 
 *) input="$1" error unknown;;
 esac
 }
