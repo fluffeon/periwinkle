@@ -12,5 +12,5 @@ Slice=session.slice
 Environment=daemonmode=true
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 Alias=periwinkle-daemon.service
