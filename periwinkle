@@ -329,6 +329,8 @@ Periwinkle Commands
 	menu - Shows the dmenu prompt directly
 	info - Report version of Periwinkle, and licensing information
 	config <reset> - Show your config file
+	format <%title% %artist% %album% %date% %songid% %state% %stateicon%> - Command that works like mpc's "--format" flag.
+	The point of the command above is to echo current song info in a clean manner for other scripts.
 
 Advanced commands
 	daemon - Run as a daemon to show song notifications on the background (experimental)
@@ -383,6 +385,7 @@ function setmetadata() {
 	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')"
 	state="$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"	
 
+	unprocesseddate=$date
 	if [ -z "$date" ]; then
 		date=""
 	else
@@ -713,7 +716,28 @@ if [ -n "$2" ]; then
 	exit 0
 else
 	error fewargs
-fi
+fi;;
+"format")
+currentsong
+setmetadata
+command="$*"
+shift
+
+input_arguments="$*"
+
+# Trim leading space and output the captured input arguments
+input_arguments="${input_arguments# }"
+output_text=$(echo "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" '{
+ gsub(/%title%/, titlevar);
+  gsub(/%artist%/, artistvar);
+  gsub(/%album%/, albumvar);
+  gsub(/%date%/, datevar);
+  gsub(/%state%/, statevar);
+  gsub(/%stateicon%/, stateiconvar);
+  gsub(/%songid%/, songidvar);
+  print;
+}')
+echo $output_text
 ;;
 "statsfornerds")
 	setpreviewname
@@ -744,8 +768,6 @@ esac
 if [ -z "$1" ]; then
 	cli
 elif [ -n "$1" ]; then
-	theinput=$1
-	theinput2=$2
-	theinput3=$3
-	cli $theinput $theinput2 $theinput3
+	theinput=$*
+	cli $theinput
 fi
