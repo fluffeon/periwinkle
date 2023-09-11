@@ -15,6 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# Go to line 84 for config
+
 function error() {
 case $1 in
 "unknown")
@@ -81,19 +83,11 @@ for cmd in "${dependencies[@]}"; do
     fi
 done
 
-# This whole section is dedicated to setting up the config file.
-
-# Make the config file if it's not there already
-function mkconfig() {
-	echo '# This is the config file for Periwinkle
-
-# MPD SETTINGS
-#
-# Self-explanatory, you can set your MPD host here.
-# Usually the default will work but you can make it point to a custom URL.
+# Here's the config for Periwinkle
+# You'll have to change this before you do anything else
 MPD_HOST=localhost
 MPD_PORT=6600
-MPD_MUSICDIR='$HOME'/Music
+MPD_MUSICDIR=$HOME/Music
 
 # DMENU COLORS
 #
@@ -112,7 +106,7 @@ DMENUCOL_SELECTFG=#70C0BA
 # PREVIEW SETTINGS
 #
 # Choose where to save the image previews
-PREVIEWDIR='$HOME'/periwinkle
+PREVIEWDIR=$HOME/periwinkle
 
 # NOTIFICATION SETTINGS
 #
@@ -129,8 +123,8 @@ TIMEOUT=3
 # Options: 
 # none | md5 | sha256 | sha512 | base64
 # The default is sha256
-USEHASH=sha256'
-}
+USEHASH=sha256
+
 
 # Function to check if a value is a number
 function is_positive_number() {
@@ -206,9 +200,6 @@ case $1 in
 		dmenum $CONDITIONOPEN
 	fi
 	;;
-
-"welcome") notify-send -t 7000 -u normal "$(echo 'Welcome to Periwinkle!')" "$(echo "It looks like it's your first time running Periwinkle. I've went ahead and created a config file for you at:\n\n$HOME/.config/periwinkle")";;
-
 *) notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname";;
 esac
 }
@@ -233,40 +224,6 @@ case $USEHASH in
 esac
 }
 
-if [ ! -f "$HOME/.config/periwinkle/config" ]; then
-	mkdir $HOME/.config/periwinkle > /dev/null 2>&1
-	$(mkconfig > $HOME/.config/periwinkle/config 2>&1)	
-	notifysendthing welcome &
-fi
-
-eliminate_comments() {
-    local input_file="$1"
-    local the_output
-    the_output=$(awk '!/^[[:space:]]*(#|$)/' "$input_file")
-    echo "$the_output"
-}
-
-# Call the function and store the output in a Bash variable
-$(eliminate_comments "$HOME/.config/periwinkle/config" > /tmp/clean_output.txt)
-
-more_config() {
-    # Specify the desired environment variables here (space-separated list)
-    designated_variables="MPD_HOST MPD_PORT MPD_MUSICDIR PREVIEWDIR DMENU_FONT DMENUCOL_BG DMENUCOL_FG DMENUCOL_SELECTBG DMENUCOL_SELECTFG TIMEOUT USEHASH"
-
-    # Use awk to extract the desired environment variables and set them as Bash variables
-    while read -r line; do
-        variable_name=$(echo "$line" | awk -F= '{print $1}')
-        if [[ $designated_variables =~ $variable_name ]]; then
-	echo $line
-            export "$line"
-        fi
-done < "/tmp/clean_output.txt" 
-}
-
-# Call the function to set the user configs
-more_config > /dev/null 2>&1
-rm /tmp/clean_output.txt
-
 # Checks if MPD_PORT is a valid number that IS an integer and NOT a string
 MINIMUMVAL=1 MAXIMUMVAL=65535 checknumbers "$MPD_PORT" integer
 checknumbers "$TIMEOUT" decimal
@@ -288,7 +245,7 @@ awk '!/^OK.*$/'
 }
 
 function help() {
-echo "Periwinkle - The cutest MPD client
+echo "Periwinkle - The cutest MPD client (Lite version)
 
 This is a CLI and also a semi-GUI client that can
 be integrated into a DWM desktop by the use of
@@ -328,7 +285,6 @@ Database Commands
 Periwinkle Commands
 	menu - Shows the dmenu prompt directly
 	info - Report version of Periwinkle, and licensing information
-	config <reset> - Show your config file
 	format <%title% %artist% %album% %date% %songid% %state% %stateicon%> - Command that works like mpc's "--format" flag.
 	The point of the command above is to echo current song info in a clean manner for other scripts.
 
@@ -384,7 +340,7 @@ function setmetadata() {
 	date="$(echo "$stats" | awk -F ': ' '/^Date:/ { sub(/^Date: /, ""); print }')"
 	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')"
 	state="$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"	
-
+	
 	unprocesseddate=$date
 	if [ -z "$date" ]; then
 		date=""
@@ -613,25 +569,6 @@ done
 
 }
 
-get_user_confirmation() {
-  read -r -p "$1 (y/n): " response
-  case "$response" in
-    [yY]|[yY][eE][sS]) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-resetpericonfig() {
-if get_user_confirmation "Do you want to reset Periwinkle's settings to their defaults?";then
-	echo "Restoring Periwinkle's configurations to their defaults..."
-		rm $HOME/.config/periwinkle/config
-		$(mkconfig > $HOME/.config/periwinkle/config 2>&1)
-		echo "Done!"
-	else
-		exit 0
-fi
-}
-
 # CLI actions
 cli() {
 case $1 in
@@ -655,19 +592,6 @@ case $1 in
 		mpdfunc $*;
 	else
 		error manyargs
-	fi
-;;
-"config")
-	if [ $2 != "reset" ]; then
-		error wrongargs
-	elif [ -n "$3" ]; then
-		error manyargs
-	elif [ $2 = "reset" ]; then
-		resetpericonfig	
-	else
-		echo 'Location: '"$HOME"'/.config/periwinkle/config'
-		echo ""
-		cat $HOME/.config/periwinkle/config
 	fi
 ;;
 "add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "consume" | "repeat" | "delete" | "direct")
@@ -716,7 +640,8 @@ if [ -n "$2" ]; then
 	exit 0
 else
 	error fewargs
-fi;;
+fi
+;;
 "format")
 currentsong
 setmetadata
