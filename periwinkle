@@ -245,7 +245,7 @@ awk '!/^OK.*$/'
 }
 
 function help() {
-echo "Periwinkle - The cutest MPD client (Lite version)
+echo "Periwinkle - The cutest MPD client
 
 This is a CLI and also a semi-GUI client that can
 be integrated into a DWM desktop by the use of
@@ -294,9 +294,8 @@ Advanced commands
 	console - Pulls an interactive MPD control terminal (advanced)
 	direct - Sends commands to MPD without being interactive, useful for scripts
 
-For now this client is a bit basic and stuff, but
-I'm gonna keep developing it and it will have
-more features in the future."
+If you want to change the settings for this client, tinker with the periwinkle script.
+All documentation is on the script."
 }
 
 function programinfo() {
