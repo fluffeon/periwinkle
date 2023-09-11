@@ -689,8 +689,6 @@ esac
 if [ -z "$1" ]; then
 	cli
 elif [ -n "$1" ]; then
-	theinput=$1
-	theinput2=$2
-	theinput3=$3
-	cli $theinput $theinput2 $theinput3
+	theinput=$*
+	cli $theinput
 fi
