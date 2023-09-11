@@ -113,6 +113,14 @@ PREVIEWDIR=$HOME/periwinkle
 # Notify timeout in seconds
 # Set 0 for no timeout
 TIMEOUT=3
+#
+# Format the notification
+# Set the appearance of the notification to your liking.
+# Side note: %datep% is a variant of %date%, what it does is that if the metadata doesn't contain any date, it hides the parenthesis. Otherwise, if it contains a year, it shows them.
+TITLEPLAY="%stateicon% %title%"
+SUBTITLEPLAY="%artist%\n%album% %datep%"
+# Set the title to appear when the queue is completely stopped
+TITLESTOP="%stateicon% Stopped"
 
 # PREVIEW SETTINGS
 # 
@@ -176,12 +184,15 @@ esac
 }
 
 notifysendthing() {
+currentsong
+setmetadata
+ffmpeg_routine
+if [ -z "$title" ]; then
+	TITLEPLAY="$TITLESTOP"
+fi
 case $1 in
 	"action")
-		currentsong
-		setmetadata
-		ffmpeg_routine
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(cli format $TITLEPLAY)" "$(cli format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
 	if [ -z "$CONDITIONOPEN" ]; then
 		return 0
 	else
@@ -190,7 +201,7 @@ case $1 in
 	;;
 
 "daemon")	
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname" --action "Open=Menu")
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(cli format $TITLEPLAY)" "$(cli format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
 	if [ -z $CONDITIONOPEN ]; then
 		return 0
 	fi
@@ -200,7 +211,7 @@ case $1 in
 		dmenum $CONDITIONOPEN
 	fi
 	;;
-*) notify-send -t $TIMEOUT -u low -r 27072 "$(echo $NOTIFYSEND_STATUS) $(echo $NOTIFYSEND_TITLE)" "$(echo $NOTIFYSEND_SUBTITLE)" -i "$previewname";;
+*) notify-send -t $TIMEOUT -u low -r 27072 "$(cli format $TITLEPLAY)" "$(cli format $SUBTITLEPLAY)" -i "$previewname";;
 esac
 }
 
@@ -285,7 +296,7 @@ Database Commands
 Periwinkle Commands
 	menu - Shows the dmenu prompt directly
 	info - Report version of Periwinkle, and licensing information
-	format <%title% %artist% %album% %date% %songid% %state% %stateicon%> - Command that works like mpc's "--format" flag.
+	format <%title% %artist% %album% %date% %datep% %songid% %state% %stateicon%> - Command that works like mpc's "--format" flag.
 	The point of the command above is to echo current song info in a clean manner for other scripts.
 
 Advanced commands
@@ -651,11 +662,12 @@ input_arguments="$*"
 
 # Trim leading space and output the captured input arguments
 input_arguments="${input_arguments# }"
-output_text=$(echo "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" '{
+output_text=$(echo "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v datepvar="$date" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" '{
  gsub(/%title%/, titlevar);
   gsub(/%artist%/, artistvar);
   gsub(/%album%/, albumvar);
   gsub(/%date%/, datevar);
+  gsub(/%datep%/, datepvar);
   gsub(/%state%/, statevar);
   gsub(/%stateicon%/, stateiconvar);
   gsub(/%songid%/, songidvar);
