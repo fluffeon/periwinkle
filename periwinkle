@@ -501,7 +501,13 @@ case $1 in
 		dmenum $prompt;;
 	"single" | "random" | "repeat" | "consume")
 	CALLED_CMD="${1,,}"
-	dmenum boolean $2
+	dmenum boolean $2;;
+	"clear")
+	theinput2=$1
+	$(mpdcom clear) > /dev/null 2>&1
+	if [ -s /tmp/pw_daemonmode ]; then
+		return 0
+	fi
 	;;
 *) prompt=$(echo -n);;
 esac
