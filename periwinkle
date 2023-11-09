@@ -335,11 +335,14 @@ Periwinkle Commands
 	format <%title% %artist% %album% %date% %datep% %songid% %state% %stateicon%> - Command that works like mpc's "--format" flag.
 	The point of the command above is to echo current song info in a clean manner for other scripts.
 
-Advanced commands
+Dmenu Exclusive Commands
+	cli <cmd> - Runs a CLI command within dmenu
+
+Advanced Commands
 	daemon - Run as a daemon to show song notifications on the background (experimental)
 	statsfornerds - Shows some environment variables related to Periwinkle
 	console - Pulls an interactive MPD control terminal (advanced)
-	direct - Sends commands to MPD without being interactive, useful for scripts
+	direct - Sends commands to MPD without going into the interactive terminal
 
 If you want to change the settings for this client, tinker with the periwinkle script.
 All documentation is on the script."
@@ -497,18 +500,23 @@ case $1 in
 	fi
 
 	notifysendthing action &;;
-	"seek" | "volume" | "setvol" | "vol" | "cli")
-		dmenum $prompt;;
+	"seek" | "volume" | "setvol" | "vol" | "crossfade")
+		SELECTED=$1
+		INTEGER=$2	
+		dmenum integer;;
+	"cli" | "CLI")
+		command=$*
+		shift
+		CALLED_CMD=$*
+		dmenum cli $prompt;;
 	"single" | "random" | "repeat" | "consume")
 	CALLED_CMD="${1,,}"
 	dmenum boolean $2;;
 	"clear")
-	theinput2=$1
-	$(mpdcom clear) > /dev/null 2>&1
-	if [ -s /tmp/pw_daemonmode ]; then
-		return 0
-	fi
-	;;
+	CALLED_CMD="${1,,}"
+	dmenum confirm $2;;
+	"update" | "shuffle")
+	cli $1;;
 *) prompt=$(echo -n);;
 esac
 
@@ -517,7 +525,7 @@ shopt -u nocasematch
 
 function dmenum() {
 # Default MPD options
-mpd=("" "" "" "" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear")
+mpd=("" "" "" "" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
 
 # Different dmenu routines
 case $1 in
@@ -549,33 +557,33 @@ fi
 ;;
 
 # Different commands
-"seek" | "Seek")
-if [ -z "$2" ]; then
-	DMENU_TITLE='Seek to where?'
-	prompt=$(echo -n | dmenuthing)
-	if [ -z "$prompt" ]; then
-		cli menu
-		return 0
-	fi
-	cli seek $prompt
-elif [ -n "$2" ]; then
-	theinput2=$2
-	cli seek $theinput2
-fi;;
+"integer")
+case $SELECTED in
+	"setvol" | "Setvol" | "vol" | "Vol" | "volume")
+		DMENU_TITLE='Set volume (0-100)'
+		SELECTED="setvol";;
+	"seek" | "Seek")
+		DMENU_TITLE='Seek to where?'
+		SELECTED="seek";;
+	"crossfade")
+		DMENU_TITLE='Set crossfade:'
+		SELECTED="crossfade";;
+esac
 
-"Vol" | "volume" | "Volume" | "setvol" | "vol")
-if [ -z "$2" ]; then
-	DMENU_TITLE='Set volume (0-100)'
+if [ -z "$INTEGER" ]; then
 	prompt=$(echo -n | dmenuthing)
 	if [ -z "$prompt" ]; then
 		cli menu
 		return 0
 	fi
-	cli setvol $prompt
-elif [ -n "$2" ]; then
-	theinput2=$2
-	cli setvol $theinput2
-fi;;
+	cli $SELECTED $prompt
+	return 0
+elif [ -n "$INTEGER" ]; then
+	cli $SELECTED $INTEGER
+	return 0
+fi
+
+;;
 
 "boolean")
 case $CALLED_CMD in
@@ -597,11 +605,33 @@ elif [ -n "$2" ]; then
 	cli $CALLED_CMD $theinput2
 fi;;
 
-"CLI" | "cli")
-DMENU_TITLE='Enter your periwinkle cmd (debugging purposes)'
-prompt=$(echo -n | dmenuthing)
-cli "$prompt";;
+"confirm")
+mpd=("Yes" "No")
+DMENU_TITLE="Are you sure you want to clear the playlist?"
+prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
 
+case $prompt in
+"Yes")
+cli $CALLED_CMD;;
+"No")
+prompt="";;
+esac
+
+if [ -z "$prompt" ]; then
+	cli menu
+	return 0
+fi
+;;
+
+"CLI" | "cli")
+DMENU_TITLE='Periwinkle:'
+
+if [ -z "$CALLED_CMD" ]; then
+	prompt=$(echo -n | dmenuthing)
+	cli "$prompt"
+elif [ -n "$CALLED_CMD" ]; then
+	cli "$CALLED_CMD"
+fi;;
 # No arguments
 "open" | "Open")
 
@@ -740,7 +770,6 @@ if [ -n "$2" ]; then
 	CORRECT_INPUT2=$2
 	MINIMUMVAL=0 MAXIMUMVAL=2147483647 checknumbers "$CORRECT_INPUT2" integer
 	mpdfunc seek "$songid" "$CORRECT_INPUT2"
-	exit 0
 else
 	error fewargs
 fi
