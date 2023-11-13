@@ -43,10 +43,11 @@ case $1 in
 	echo "Error: Wrong arguments for this command... :<"
 	exit 1;;
 "stopped")
-	echo "Error: You can't "$input" if you have no songs in your queue, silly! .w."
+	echo "Error: You can't "$input" if you have no songs in your queue, that is a silly! .w."
 	exit 1;;
 "" | *)
-	echo "Error: Something went wrong... o.O"
+	echo "Error: Something went wrong... o.O
+	If you see this error please open a issue report about it"
 	exit 1;;
 esac
 }
@@ -410,10 +411,16 @@ function setmetadata() {
 	
 	if [ "$state" = "stop" ]; then
 		NOTIFYSEND_STATUS=""
+		OPPSTATUS=""
+		OPPSTATUS2=""
 	elif [ "$state" = "pause" ]; then
 		NOTIFYSEND_STATUS=""
+		OPPSTATUS=""
+		OPPSTATUS2=""
 	elif [ "$state" = "play" ]; then
 		NOTIFYSEND_STATUS=""
+		OPPSTATUS=""
+		OPPSTATUS2=""
 	fi
 }
 
@@ -508,7 +515,7 @@ case $1 in
 		command=$*
 		shift
 		CALLED_CMD=$*
-		dmenum cli $prompt;;
+		dmenum cli $CALLED_CMD;;
 	"single" | "random" | "repeat" | "consume")
 	CALLED_CMD="${1,,}"
 	dmenum boolean $2;;
@@ -524,15 +531,13 @@ shopt -u nocasematch
 }
 
 function dmenum() {
-# Default MPD options
-mpd=("" "" "" "" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
-
 # Different dmenu routines
 case $1 in
 # Daemon option
 "daemon")
 currentsong
 setmetadata
+mpd=("" "$OPPSTATUS" "$OPPSTATUS2" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
 if [ "$CLI" = "TRUE" ]; then
 		exit 0
 fi
@@ -638,6 +643,12 @@ fi;;
 # Show dmenu with the controls
 currentsong
 setmetadata
+if [ -z "$OPPSTATUS2" ]; then
+mpd=("" "$OPPSTATUS" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
+else
+mpd=("" "$OPPSTATUS" "$OPPSTATUS2" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
+fi
+
 if [ -z "$mpc_file" ]; then
 	DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
 else
