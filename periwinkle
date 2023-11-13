@@ -836,9 +836,4 @@ echo $output_text
 esac
 }
 
-if [ -z "$1" ]; then
-	cli
-elif [ -n "$1" ]; then
-	theinput=$*
-	cli $theinput
-fi
+cli $*
