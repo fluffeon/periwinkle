@@ -128,6 +128,11 @@ SUBTITLEPLAY="%artist%\n%album% %datep%"
 # Set the title to appear when the queue is completely stopped
 TITLESTOP="%stateicon% Stopped"
 
+# Use formatting behavior from CLI, similar to previous versions of Periwinkle
+# So what this does is basically when a song has no title, it displays the filename instead. And if there's no artist, it shows "Unknown Artist"
+# By default, it's set on "false"
+CLIBEHAVIOR=false
+
 # PREVIEW SETTINGS
 # 
 # Choose the hash that you would like to use to save the image previews
@@ -170,6 +175,16 @@ defaultcheck() {
 }
 
 defaultcheck
+shopt -s nocasematch
+
+case $CLIBEHAVIOR in
+	"true")
+	FORMATCLI="TRUE"
+	;;
+esac
+
+shopt -u nocasematch
+	
 
 # Function to check if a value is a number
 function is_positive_number() {
@@ -226,10 +241,11 @@ setmetadata
 ffmpeg_routine
 if [ -z "$mpc_file" ]; then
 	TITLEPLAY="$TITLESTOP"
+	SUBTITLEPLAY=""
 fi
 case $1 in
 	"action")
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(cli format $TITLEPLAY)" "$(cli format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(format $TITLEPLAY)" "$(format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
 	if [ -z "$CONDITIONOPEN" ]; then
 		return 0
 	else
@@ -238,7 +254,7 @@ case $1 in
 	;;
 
 "daemon")	
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(cli format $TITLEPLAY)" "$(cli format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
+		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(format $TITLEPLAY)" "$(format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
 	if [ -z $CONDITIONOPEN ]; then
 		return 0
 	fi
@@ -248,7 +264,7 @@ case $1 in
 		dmenum $CONDITIONOPEN
 	fi
 	;;
-*) notify-send -t $TIMEOUT -u low -r 27072 "$(cli format $TITLEPLAY)" "$(cli format $SUBTITLEPLAY)" -i "$previewname";;
+*) notify-send -t $TIMEOUT -u low -r 27072 "$(format $TITLEPLAY)" "$(format $SUBTITLEPLAY)" -i "$previewname";;
 esac
 }
 
@@ -383,7 +399,8 @@ function currentsong() {
 	filename=$MPD_MUSICDIR/${mpc_file##*:}
 }
 
-function setmetadata() {	
+function setmetadata() {
+	currentsong
 	title="$(echo "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
 	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ { sub(/^Artist: /, ""); print }')"
 	album="$(echo "$stats" | awk -F ': ' '/^Album:/ { sub(/^Album: /, ""); print }')"
@@ -398,14 +415,29 @@ function setmetadata() {
     		date="($date)"
 	fi
 
+	titlesave="$title"
+	artistsave="$artist"
+	albumsave="$album"
+	songidsave="$songid"
+	statesave="$state"
+
+	if [ -z "$title" ]; then
+		title="$mpc_file"
+	fi
+
+	if [ -z "$artist" ]; then
+		artist="Unknown Artist"
+	fi
+
 	if [ -z "$mpc_file" ]; then
 		NOTIFYSEND_TITLE="Stopped"
 		NOTIFYSEND_SUBTITLE=""
 	else
 		if [ -z "$title" ]; then
-		NOTIFYSEND_TITLE="(no title)"
+			NOTIFYSEND_TITLE="$mpc_file"
+		else
+			NOTIFYSEND_TITLE="$title"
 		fi
-		NOTIFYSEND_TITLE="$title"
 		NOTIFYSEND_SUBTITLE="$(echo "$artist\n$album $date")"
 	fi 
 	
@@ -535,7 +567,6 @@ function dmenum() {
 case $1 in
 # Daemon option
 "daemon")
-currentsong
 setmetadata
 mpd=("" "$OPPSTATUS" "$OPPSTATUS2" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
 if [ "$CLI" = "TRUE" ]; then
@@ -558,8 +589,7 @@ if [ -z "$prompt" ]; then
 	return 0
 else
 	dmenum daemon
-fi
-;;
+fi;;
 
 # Different commands
 "integer")
@@ -586,17 +616,16 @@ if [ -z "$INTEGER" ]; then
 elif [ -n "$INTEGER" ]; then
 	cli $SELECTED $INTEGER
 	return 0
-fi
-
-;;
+fi;;
 
 "boolean")
 case $CALLED_CMD in
-"single")
-	mpd=("0" "1" "oneshot");;
-*)
-	mpd=("0" "1");;
-esac
+	"single")
+		mpd=("0" "1" "oneshot");;
+	*)
+		mpd=("0" "1");;
+	esac
+
 if [ -z "$2" ]; then
 	DMENU_TITLE="Set boolean for $CALLED_CMD"
 	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
@@ -641,7 +670,6 @@ fi;;
 "open" | "Open")
 
 # Show dmenu with the controls
-currentsong
 setmetadata
 if [ -z "$OPPSTATUS2" ]; then
 mpd=("" "$OPPSTATUS" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
@@ -681,27 +709,23 @@ echo "even when you're not running it."
 echo ""
 echo "This feature is still experimental, so please beware of anything that might happen"
 echo 'Daemon Mode' > /tmp/pw_daemonmode
-currentsong
 setmetadata
 ffmpeg_routine
 previousstate="$state"
 trap quitdaemon SIGINT
 
 while true; do
-	currentsong
 	setmetadata
 	currentsong_daemon="$title - $artist - $album $date"
 	currentstate="$state"
 
 	if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
-		currentsong
 		setmetadata
 		ffmpeg_routine
 		echo 'Song changed to: '"'$title'"' by '"$artist"
 		notifysendthing daemon &
 		previoussong_daemon="$currentsong_daemon"
     	elif [ "$currentstate" != "$previousstate" ]; then
-		currentsong
 		setmetadata
 		ffmpeg_routine
 		echo 'State changed to '"$currentstate"
@@ -713,6 +737,37 @@ done
 
 }
 
+format() {
+setmetadata
+#command="$*"
+#shift
+
+case $FORMATCLI in
+	"TRUE")
+	title=$titlesave
+	artist=$artistsave
+esac
+
+input_arguments="$*"
+
+# Trim leading space and output the captured input arguments
+input_arguments="${input_arguments# }"
+output_text=$(echo "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v datepvar="$date" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" -v filenamevar="$mpc_file" -v dirvar="$filename" '{
+ gsub(/%title%/, titlevar);
+  gsub(/%artist%/, artistvar);
+  gsub(/%album%/, albumvar);
+  gsub(/%date%/, datevar);
+  gsub(/%datep%/, datepvar);
+  gsub(/%state%/, statevar);
+  gsub(/%stateicon%/, stateiconvar);
+  gsub(/%songid%/, songidvar);
+  gsub(/%filename%/, filenamevar);
+  gsub(/%dir%/, dirvar);
+  print;
+}')
+echo $output_text
+}
+
 # CLI actions
 cli() {
 case $1 in
@@ -721,12 +776,10 @@ case $1 in
 	theinput3=$1
 	CLI="TRUE"
 	notifselect $theinput3 
-	currentsong
 	setmetadata
 	ffmpeg_routine	
 ;;
 "menu")
-	currentsong
 	setmetadata
 	ffmpeg_routine
 	dmenum open &;;
@@ -766,7 +819,6 @@ case $1 in
 	fi	
 	;;
 "seek")
-currentsong
 setmetadata
 
 if [ -n "$3" ]; then
@@ -786,34 +838,14 @@ else
 fi
 ;;
 "format")
-currentsong
-setmetadata
-command="$*"
+FORMATCLI=TRUE
+command=$*
 shift
-
-input_arguments="$*"
-
-# Trim leading space and output the captured input arguments
-input_arguments="${input_arguments# }"
-output_text=$(echo "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v datepvar="$date" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" -v filenamevar="$mpc_file" -v dirvar="$filename" '{
- gsub(/%title%/, titlevar);
-  gsub(/%artist%/, artistvar);
-  gsub(/%album%/, albumvar);
-  gsub(/%date%/, datevar);
-  gsub(/%datep%/, datepvar);
-  gsub(/%state%/, statevar);
-  gsub(/%stateicon%/, stateiconvar);
-  gsub(/%songid%/, songidvar);
-  gsub(/%filename%/, filenamevar);
-  gsub(/%dir%/, dirvar);
-  print;
-}')
-echo $output_text
+format $*
 ;;
 "statsfornerds")
-	setpreviewname
-	currentsong
 	setmetadata
+	setpreviewname
 	ffmpeg_routine
 	echo 'Output: '
 	echo $stats
@@ -827,8 +859,7 @@ echo $output_text
 	echo 'Album: '"$album"
 	echo 'Date: '"$date"
 	echo
-	echo 'Hash: '"$USEHASH"
-;;
+	echo 'Hash: '"$USEHASH";;
 "console") nc "$MPD_HOST" "$MPD_PORT";;
 "info") programinfo;;
 "") notifysendthing action &;; 
