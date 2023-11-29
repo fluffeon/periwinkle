@@ -14,4 +14,6 @@ This will be good to analize later on to make independent Bash programs, I'm sti
 # Install
 Clone this repo and run `make install` without sudo.
 
+To activate the daemon with systemd, type `systemctl --user start periwinkle-daemon` or enable it using `systemctl --user enable periwinkle-daemon` to make it run every time you boot up the computer.
+
 I'm only putting it on the internet because maybe there's people that will find this useful.
