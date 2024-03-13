@@ -1,6 +1,6 @@
 #!/bin/bash
 #    Periwinkle - A MPD client with tight integration with dmenu and libnotify.
-#    Copyright (C) 2023 flookerton
+#    Copyright (C) 2023 Fen
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -370,7 +370,7 @@ function programinfo() {
     Periwinkle - The cutest MPD client
     Version:
 
-    Copyright (C) 2023  flookerton
+    Copyright (C) 2023 Fen
 
     Contributors: ChatGPT, Barrucadu
 
