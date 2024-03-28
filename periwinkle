@@ -17,34 +17,36 @@
 
 # Go to line 84 for config
 
-function error() {
+function pw_Error() {
 case $1 in
-"unknown")
+"UnknownCommand")
 	echo "Error: '"$input"' is not a known command >.<"
 	exit 1;;
 	
-"invint")
+"InvalidInteger")
 	echo "Error: '"$input"' is not a valid integer -w-"
 	exit 1;;
 
-"invnum")
+"InvalidNumber")
 	echo "Error: '"$input"' is not a valid number -w-"
 	exit 1;;
 
-"fewargs")
+"FewArguments")
 	echo "Error: Not enough arguments... ;w;"
 	exit 1;;
 
-"manyargs")
+"ManyArguments")
 	echo "Error: T-That's too many arguments!! >w<"
 	exit 1;;
 
-"wrongargs")
+"WrongArguments")
 	echo "Error: Wrong arguments for this command... :<"
 	exit 1;;
-"stopped")
+
+"PlaylistClear")
 	echo "Error: You can't "$input" if you have no songs in your queue, that is a silly! .w."
 	exit 1;;
+
 "" | *)
 	echo "Error: Something went wrong... o.O
 	If you see this error please open a issue report about it"
@@ -53,7 +55,7 @@ esac
 }
 
 # Check if the necessary dependencies are installed
-function whichone() {
+function pw_MissingDependency() {
 	case $cmd in
 		"notify-send")
 			echo "Dependency missing: 'notify-send' (libnotify) is required but not found. Please install it."
@@ -76,62 +78,81 @@ function whichone() {
 	esac
 }
 
-dependencies=("nc" "awk" "notify-send" "dmenu" "ffmpeg")
+Dependencies=("nc" "awk" "notify-send" "dmenu" "ffmpeg")
 
-for cmd in "${dependencies[@]}"; do
+for cmd in "${Dependencies[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
-	whichone
+	pw_MissingDependency
     fi
 done
 
 # Here's the config for Periwinkle
 # You'll have to change this before you do anything else
-MPD_HOST=localhost
-MPD_PORT=6600
-MPD_MUSICDIR=$HOME/Music
+
+# MPD
+#
+# Choose where to point
+
+#MPD_Host=localhost
+#MPD_Port=6600
+
+# Choose your music directory
+
+#Directory_MusicFolder=$HOME/Music
 
 # DMENU
 #
 # In dwm, usually the following equivalents for dmenu coloring are:
-# DMENU_FONT = dmenufont
-# DMENUCOL_BG = col_gray1
-# DMENUCOL_FG = col_gray3
-# DMENUCOL_SELECTBG = col_gray4
-# DMENUCOL_SELECTFG = col_cyan
-#
-#DMENU_FONT=Terminus:size=10
-#DMENUCOL_BG=#5B544C
-#DMENUCOL_FG=#E4E3E0
-#DMENUCOL_SELECTBG=#DA2A47
-#DMENUCOL_SELECTFG=#E4E3E0
+# Bar_Font = dmenufont
+# Color_Background = col_gray1
+# Color_Foreground = col_gray3
+# Color_SelectedBackground = col_gray4
+# Color_SelectedForeground = col_cyan
+
+#Bar_Font=Serif:size=10
+#Color_Background=#5B544C
+#Color_Foreground=#E4E3E0
+#Color_SelectedBackground=#DA2A47
+#Color_SelectedForeground=#E4E3E0
 
 # Location of DMENU, if it's at the bottom or top.
 # By default it's at the bottom
-DMENU_LOCATION=bottom
+
+#Bar_Position=bottom
 
 # PREVIEW SETTINGS
 #
 # Choose where to save the image previews
-PREVIEWDIR=$HOME/periwinkle
+
+Directory_AlbumCover=$HOME/periwinkle
 
 # NOTIFICATION SETTINGS
 #
 # Notify timeout in seconds
 # Set 0 for no timeout
-TIMEOUT=3
-#
+
+#Notify_Timeout=3
+
+# Show extra control buttons in the popup
+
+#Notify_ExtraButtons=False
+
 # Format the notification
 # Set the appearance of the notification to your liking.
 # Side note: %datep% is a variant of %date%, what it does is that if the metadata doesn't contain any date, it hides the parenthesis. Otherwise, if it contains a year, it shows them.
-TITLEPLAY="%stateicon% %title%"
-SUBTITLEPLAY="%artist%\n%album% %datep%"
+
+#Notify_TitlePlay="%stateicon% %title%"
+#Notify_SubtitlePlay="%artist%\n%album% %datep%"
+
 # Set the title to appear when the queue is completely stopped
-TITLESTOP="%stateicon% Stopped"
+
+#Notify_TitleStop="%stateicon% Stopped"
 
 # Use formatting behavior from CLI, similar to previous versions of Periwinkle
 # So what this does is basically when a song has no title, it displays the filename instead. And if there's no artist, it shows "Unknown Artist"
 # By default, it's set on "false"
-CLIBEHAVIOR=false
+
+#Notify_FillEmptyTags=false
 
 # PREVIEW SETTINGS
 # 
@@ -142,44 +163,93 @@ CLIBEHAVIOR=false
 # Options: 
 # none | md5 | sha256 | sha512 | base64
 # The default is sha256
-USEHASH=sha256
 
+#UseHash=sha256
+
+# Placeholder default check. Will be more sophisticated in the future.
 defaultcheck() {
-	if [ -z "$DMENUCOL_BG" ]; then
-		DMENUCOL_BG=#5B544C
-	fi
 
-	if [ -z "$DMENU_FONT" ]; then
-		DMENU_FONT=Terminus:size=10
+	if [ -z "$MPD_Host" ]; then
+		MPD_Host=localhost
 	fi
 	
-	if [ -z "$DMENUCOL_BG" ]; then
-		DMENUCOL_BG=#5B544C
+	if [ -z "$MPD_Port" ]; then
+		MPD_Port=6600
 	fi
 
-	if [ -z "$DMENUCOL_FG" ]; then
-		DMENUCOL_FG=#E4E3E0
+	if [ -z "$Notify_Timeout" ]; then
+		Notify_Timeout=3	
 	fi
 
-	if [ -z "$DMENUCOL_SELECTBG" ]; then
-		DMENUCOL_SELECTBG=#DA2A47
+	if [ -z "$Notify_TitlePlay" ]; then
+		Notify_TitlePlay="%stateicon% %title%"	
 	fi
 
-	if [ -z "$DMENUCOL_SELECTFG" ]; then
-		DMENUCOL_SELECTFG=#E4E3E0
+	if [ -z "$Notify_SubtitlePlay" ]; then
+		Notify_SubtitlePlay="%artist%\n%album% %datep%"	
 	fi
-	#DMENUCOL_FG=#E4E3E0
-	#DMENUCOL_SELECTBG=#DA2A47
-	#DMENUCOL_SELECTFG=#E4E3E0
 
+	if [ -z "$Notify_TitleStop" ]; then
+		Notify_TitleStop="%stateicon% Stopped"
+	fi
+
+	if [ -z "$Notify_FillEmptyTags" ]; then
+		Notify_FillEmptyTags=false	
+	fi
+
+	if [ -z "$Notify_ExtraButtons" ]; then
+		Notify_ExtraButtons=false
+	fi
+
+	if [ -z "$Color_Background" ]; then
+		Color_Background=#5B544C
+	fi
+
+	if [ -z "$Bar_Position" ]; then
+		Bar_Position=top
+	fi
+
+	if [ -z "$Bar_Font" ]; then
+		Bar_Font=Serif:size=10
+	fi
+	
+	if [ -z "$Color_Background" ]; then
+		Color_Background=#5B544C
+	fi
+
+	if [ -z "$Color_Foreground" ]; then
+		Color_Foreground=#E4E3E0
+	fi
+
+	if [ -z "$Color_SelectedBackground" ]; then
+		Color_SelectedBackground=#DA2A47
+	fi
+
+	if [ -z "$Color_SelectedForeground" ]; then
+		Color_SelectedForeground=#E4E3E0
+	fi
+
+	if [ -z "$Directory_AlbumCover" ]; then
+		Directory_AlbumCover=$HOME/periwinkle	
+	fi
+
+	if [ -z "$Directory_MusicFolder" ]; then
+		Directory_MusicFolder=$HOME/Music	
+	fi
 }
 
 defaultcheck
 shopt -s nocasematch
 
-case $CLIBEHAVIOR in
+case $Notify_FillEmptyTags in
 	"true")
 	FORMATCLI="TRUE"
+	;;
+esac
+
+case $Notify_ExtraButtons in
+	"true")
+	NEWNOTIFBEHAVIOR=1
 	;;
 esac
 
@@ -217,20 +287,20 @@ case $2 in
 	# Set the variable with the validated integer
 		echo -n
 	else
-		input=$1 error invint
+		input=$1 pw_Error InvalidInteger
 	fi;;
 "decimal")
 	input=$1
 	if is_positive_number "$input"; then
 		echo -n
 	else
-		input=$1 error invnum
+		input=$1 pw_Error InvalidNumber
 	fi;;
 *)
 	echo $1
 	echo "DEBUG INFO: Invalid arguments for this function"
 	echo "If this gets outputted onto you, please open a issue about it"
-	error;;
+	pw_Error;;
 esac
 # done
 }
@@ -239,69 +309,92 @@ notifysendthing() {
 currentsong
 setmetadata
 ffmpeg_routine
+
+shopt -s nocasematch
+
+if [ -z "$OPPSTATUS" ] && [ $NEWNOTIFBEHAVIOR = 1 ]; then
+	NOTIFICATIONACTION=""
+else
+	NOTIFICATIONACTION="--action $OPPSTATUS=$OPPSTATUS --action forward="	
+fi
+
+shopt -u nocasematch
+
+
 if [ -z "$mpc_file" ]; then
-	TITLEPLAY="$TITLESTOP"
-	SUBTITLEPLAY=""
+	Notify_TitlePlay="$Notify_TitleStop"
+	Notify_SubtitlePlay=""
 fi
 case $1 in
-	"action")
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(format $TITLEPLAY)" "$(format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
+	"action" | "daemon")
+		CONDITIONOPEN=$(notify-send -t $Notify_Timeout -u low -r 27072 "$(format $Notify_TitlePlay)" "$(format $Notify_SubtitlePlay)" -i "$previewname" --action "open=Show" $NOTIFICATIONACTION)
 	if [ -z "$CONDITIONOPEN" ]; then
 		return 0
+	elif [ -s /tmp/pw_daemonmode ]; then
+		if [ "$CONDITIONOPEN" = "$OPPSTATUS" ] || [ "$CONDITIONOPEN" = "forward" ]; then
+			notifselect $CONDITIONOPEN
+			return 0
+		fi
+	dmenum daemon
+	elif [ "$CONDITIONOPEN" = "$OPPSTATUS" ] || [ "$CONDITIONOPEN" = "forward" ]; then
+			notifselect $OPPSTATUS
+			return 0
 	else
-	dmenum $CONDITIONOPEN
-	fi
-	;;
-
-"daemon")	
-		CONDITIONOPEN=$(notify-send -t $TIMEOUT -u low -r 27072 "$(format $TITLEPLAY)" "$(format $SUBTITLEPLAY)" -i "$previewname" --action "Open=Menu")
-	if [ -z $CONDITIONOPEN ]; then
-		return 0
-	fi
-
-	if [ -s /tmp/pw_daemonmode ]; then
-		CONDITIONOPEN=daemon
 		dmenum $CONDITIONOPEN
 	fi
 	;;
-*) notify-send -t $TIMEOUT -u low -r 27072 "$(format $TITLEPLAY)" "$(format $SUBTITLEPLAY)" -i "$previewname";;
+
+#"daemon")	
+#		CONDITIONOPEN=$(notify-send -t $Notify_Timeout -u low -r 27072 "$(format $Notify_TitlePlay)" "$(format $Notify_SubtitlePlay)" -i "$previewname" --action "Open=Menu")
+#	if [ -z $CONDITIONOPEN ]; then
+#		return 0
+#	elif [ $CONDITIONOPEN = $OPPSTATUS ]; then
+#		notifselect $OPPSTATUS
+#	fi
+#
+#	if [ -s /tmp/pw_daemonmode ]; then
+#		CONDITIONOPEN=daemon
+#		dmenum $CONDITIONOPEN
+#	fi
+#	;;
+*) notify-send -t $Notify_Timeout -u low -r 27072 "$(format $Notify_TitlePlay)" "$(format $Notify_SubtitlePlay)" -i "$previewname";;
 esac
 }
 
 function setpreviewname() {
-case $USEHASH in
+case $UseHash in
 	"none")
-	previewname="$PREVIEWDIR"/"$(echo $album $date)".png
+	previewname="$Directory_AlbumCover"/"$(echo $album $date)".png
 	;;
 	"md5")
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png
+	previewname="$Directory_AlbumCover"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png
 	;;
 	"base64")
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png
+	previewname="$Directory_AlbumCover"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png
 	;;
 	"sha512")
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png
+	previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png
 	;;
 	"sha256" | "" | *)
-	previewname="$PREVIEWDIR"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png
+	previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png
 	;;	
 esac
 }
 
-# Checks if MPD_PORT is a valid number that IS an integer and NOT a string
-MINIMUMVAL=1 MAXIMUMVAL=65535 checknumbers "$MPD_PORT" integer
-checknumbers "$TIMEOUT" decimal
+# Checks if MPD_Port is a valid number that IS an integer and NOT a string
+MINIMUMVAL=1 MAXIMUMVAL=65535 checknumbers "$MPD_Port" integer
+checknumbers "$Notify_Timeout" decimal
 
-# Checks if TIMEOUT is a valid number that is NOT a string, but independently if it's an integer
+# Checks if Notify_Timeout is a valid number that is NOT a string, but independently if it's an integer
 
-if [ ! -d "$PREVIEWDIR" ]; then
-	mkdir -v "$PREVIEWDIR"
+if [ ! -d "$Directory_AlbumCover" ]; then
+	mkdir -v "$Directory_AlbumCover"
 fi
 
 # The config checking routines were made by ChatGPT. Thank you so much.
 
-# Convert the seconds to milliseconds in the TIMEOUT variable
-TIMEOUT=$(awk "BEGIN { printf(\"%.0f\", $TIMEOUT * 1000) }" | awk '{sub(/%$/,"")}1')
+# Convert the seconds to milliseconds in the Notify_Timeout variable
+Notify_Timeout=$(awk "BEGIN { printf(\"%.0f\", $Notify_Timeout * 1000) }" | awk '{sub(/%$/,"")}1')
 
 # Clean the stinky output
 function cleanoutput() {
@@ -389,14 +482,14 @@ function programinfo() {
 }
 
 # Function to send commands to MPD which is netcat-agnostic
-function mpdcom { echo -e "$1\nclose" | nc "$MPD_HOST" "$MPD_PORT"; }
+function mpdcom { echo -e "$1\nclose" | nc "$MPD_Host" "$MPD_Port"; }
 
 # Save the output to a variable so it isn't called everytime, improving performance
 function currentsong() {
 	stats="$(mpdcom currentsong | tr -d '\r')"
 	stats2="$(mpdcom status | tr -d '\r')"
 	mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
-	filename=$MPD_MUSICDIR/${mpc_file##*:}
+	filename=$Directory_MusicFolder/${mpc_file##*:}
 }
 
 function setmetadata() {
@@ -454,6 +547,7 @@ function setmetadata() {
 		OPPSTATUS=""
 		OPPSTATUS2=""
 	fi
+	return 0
 }
 
 function ffmpeg_routine() {	
@@ -464,22 +558,22 @@ function ffmpeg_routine() {
 
 # Fetch some stuff, better not change this
 mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
-filename=$MPD_MUSICDIR/${mpc_file##*:}
+filename=$Directory_MusicFolder/${mpc_file##*:}
 
-case $DMENU_LOCATION in
+case $Bar_Position in
 	"bottom" | "Bottom")
-		DMENU_LOCATION="-b"
+		Bar_Position="-b"
 		;;
 	"top" | "Top")
-		DMENU_LOCATION=""
+		Bar_Position=""
 		;;
 	*)
-	DMENU_LOCATION="-b"
+	Bar_Position="-b"
 		;;
 esac
 
-dmenuthing() {
-dmenu "$DMENU_LOCATION" -i -p "$DMENU_TITLE" -fn "$DMENU_FONT" -nb "$DMENUCOL_BG" -nf "$DMENUCOL_FG" -sb "$DMENUCOL_SELECTBG" -sf "$DMENUCOL_SELECTFG"
+dmenu_spawn() { 
+	dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground" 
 }
 
 function mpdfunc()
@@ -564,12 +658,21 @@ shopt -u nocasematch
 
 function dmenum() {
 # Different dmenu routines
+
 case $1 in
 # Daemon option
 "daemon")
+# Sleep to mitigate some race conditions
+sleep 0,1
 setmetadata
+
+if [ -z "$OPPSTATUS2" ]; then
+mpd=("" "$OPPSTATUS" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
+else
 mpd=("" "$OPPSTATUS" "$OPPSTATUS2" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
-if [ "$CLI" = "TRUE" ]; then
+fi
+
+if [ "$CLI" = True ]; then
 		exit 0
 fi
 
@@ -581,7 +684,7 @@ if [ -z "$mpc_file" ]; then
 
 # Show dmenu with the controls
 if [ -s /tmp/pw_daemonmode ]; then	
-	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
+	prompt="$(printf '%s\n' "${mpd[@]}" | dmenu_spawn)"
 	notifselect $prompt &
 fi
 
@@ -606,7 +709,7 @@ case $SELECTED in
 esac
 
 if [ -z "$INTEGER" ]; then
-	prompt=$(echo -n | dmenuthing)
+	prompt=$(echo -n | dmenu_spawn)
 	if [ -z "$prompt" ]; then
 		cli menu
 		return 0
@@ -628,7 +731,7 @@ case $CALLED_CMD in
 
 if [ -z "$2" ]; then
 	DMENU_TITLE="Set boolean for $CALLED_CMD"
-	prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
+	prompt="$(printf '%s\n' "${mpd[@]}" | dmenu_spawn)"
 	if [ -z "$prompt" ]; then
 		cli menu
 		return 0
@@ -642,7 +745,7 @@ fi;;
 "confirm")
 mpd=("Yes" "No")
 DMENU_TITLE="Are you sure you want to clear the playlist?"
-prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
+prompt="$(printf '%s\n' "${mpd[@]}" | dmenu_spawn)"
 
 case $prompt in
 "Yes")
@@ -661,7 +764,7 @@ fi
 DMENU_TITLE='Periwinkle:'
 
 if [ -z "$CALLED_CMD" ]; then
-	prompt=$(echo -n | dmenuthing)
+	prompt=$(echo -n | dmenu_spawn)
 	cli "$prompt"
 elif [ -n "$CALLED_CMD" ]; then
 	cli "$CALLED_CMD"
@@ -670,6 +773,7 @@ fi;;
 "open" | "Open")
 
 # Show dmenu with the controls
+sleep 0,1
 setmetadata
 if [ -z "$OPPSTATUS2" ]; then
 mpd=("" "$OPPSTATUS" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
@@ -683,7 +787,7 @@ else
 	DMENU_TITLE="$NOTIFYSEND_STATUS $artist - $title"
 fi
 
-prompt="$(printf '%s\n' "${mpd[@]}" | dmenuthing)"
+prompt="$(printf '%s\n' "${mpd[@]}" | dmenu_spawn)"
 notifselect $prompt
 if [ -z "$prompt" ]; then
 	exit 0
@@ -774,7 +878,7 @@ case $1 in
 "help") help;;
 "pause" | "play" | "prev" | "previous" | "backward" | "stop" | "next" | "forward")
 	theinput3=$1
-	CLI="TRUE"
+	CLI=True
 	notifselect $theinput3 
 	setmetadata
 	ffmpeg_routine	
@@ -788,7 +892,7 @@ case $1 in
 	if [ -z $2 ]; then
 		mpdfunc $*;
 	else
-		error manyargs
+		pw_Error ManyArguments
 	fi
 ;;
 "add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "consume" | "repeat" | "delete" | "direct")
@@ -815,18 +919,18 @@ case $1 in
 	elif [ -n "$2" ]; then
 		mpdfunc $1 "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
 	else
-		error fewargs
+		pw_Error FewArguments
 	fi	
 	;;
 "seek")
 setmetadata
 
 if [ -n "$3" ]; then
-	error manyargs
+	pw_Error ManyArguments
 fi
 
 if [ -z "$songid" ]; then
-	input="$1" error stopped
+	input="$1" pw_Error PlaylistClear
 fi
 
 if [ -n "$2" ]; then
@@ -834,7 +938,7 @@ if [ -n "$2" ]; then
 	MINIMUMVAL=0 MAXIMUMVAL=2147483647 checknumbers "$CORRECT_INPUT2" integer
 	mpdfunc seek "$songid" "$CORRECT_INPUT2"
 else
-	error fewargs
+	pw_Error FewArguments
 fi
 ;;
 "format")
@@ -850,7 +954,7 @@ format $*
 	echo 'Output: '
 	echo $stats
 	echo
-	echo 'Preview Dir: '"$PREVIEWDIR"
+	echo 'Preview Dir: '"$Directory_AlbumCover"
 	echo 'Filename: '"$filename"
 	echo 'Preview Name: '"$previewname"
 	echo ""
@@ -859,11 +963,11 @@ format $*
 	echo 'Album: '"$album"
 	echo 'Date: '"$date"
 	echo
-	echo 'Hash: '"$USEHASH";;
-"console") nc "$MPD_HOST" "$MPD_PORT";;
+	echo 'Hash: '"$UseHash";;
+"console") nc "$MPD_Host" "$MPD_Port";;
 "info") programinfo;;
 "") notifysendthing action &;; 
-*) input="$1" error unknown;;
+*) input="$1" pw_Error UnknownCommand;;
 esac
 }
 
