@@ -124,7 +124,7 @@ done
 #
 # Choose where to save the image previews
 
-Directory_AlbumCover=$HOME/periwinkle
+#Directory_AlbumCover=$HOME/periwinkle
 
 # NOTIFICATION SETTINGS
 #
@@ -135,7 +135,7 @@ Directory_AlbumCover=$HOME/periwinkle
 
 # Show extra control buttons in the popup
 
-#Notify_ExtraButtons=False
+Notify_ExtraButtons=true
 
 # Format the notification
 # Set the appearance of the notification to your liking.
@@ -246,13 +246,15 @@ case $Notify_FillEmptyTags in
 	FORMATCLI="TRUE"
 	;;
 esac
-
+set -x
 case $Notify_ExtraButtons in
 	"true")
+	NEWNOTIFBEHAVIOR=0;;
+	"false")
 	NEWNOTIFBEHAVIOR=1
 	;;
 esac
-
+set +x
 shopt -u nocasematch
 	
 
@@ -306,18 +308,16 @@ esac
 }
 
 notifysendthing() {
-currentsong
-setmetadata
-ffmpeg_routine
 
 shopt -s nocasematch
-
+set -x
 if [ -z "$OPPSTATUS" ] && [ $NEWNOTIFBEHAVIOR = 1 ]; then
 	NOTIFICATIONACTION=""
-else
+elif [ $NEWNOTIFBEHAVIOR = 0 ]; then
+	pw_Refresh
 	NOTIFICATIONACTION="--action $OPPSTATUS=$OPPSTATUS --action forward="	
 fi
-
+set +x
 shopt -u nocasematch
 
 
@@ -359,6 +359,8 @@ case $1 in
 #	;;
 *) notify-send -t $Notify_Timeout -u low -r 27072 "$(format $Notify_TitlePlay)" "$(format $Notify_SubtitlePlay)" -i "$previewname";;
 esac
+
+set +x
 }
 
 function setpreviewname() {
@@ -482,18 +484,217 @@ function programinfo() {
 }
 
 # Function to send commands to MPD which is netcat-agnostic
-function mpdcom { echo -e "$1\nclose" | nc "$MPD_Host" "$MPD_Port"; }
+function mpdcom { 
+	echo -e "$1\nclose" | nc "$MPD_Host" "$MPD_Port"; }
 
 # Save the output to a variable so it isn't called everytime, improving performance
-function currentsong() {
-	stats="$(mpdcom currentsong | tr -d '\r')"
-	stats2="$(mpdcom status | tr -d '\r')"
-	mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
-	filename=$Directory_MusicFolder/${mpc_file##*:}
+#function currentsong() {
+#	stats="$(mpdcom currentsong | tr -d '\r')"
+#	stats2="$(mpdcom status | tr -d '\r')"
+#	mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
+#	filename=$Directory_MusicFolder/${mpc_file##*:}
+#}
+
+pw_ReloadMetadata() {
+shopt -s nocasematch
+
+case $1 in
+	"Title")
+		title="$(echo "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
+		titlesave="$title"
+
+		if [ -z "$title" ]; then
+			title="$mpc_file"
+		fi;;
+	"Artist")
+		artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ { sub(/^Artist: /, ""); print }')"
+		artistsave="$artist"
+
+		if [ -z "$artist" ]; then
+			artist="Unknown Artist"
+		fi;;
+	"Album")
+		album="$(echo "$stats" | awk -F ': ' '/^Album:/ { sub(/^Album: /, ""); print }')"
+		albumsave="$album";;
+	"Date")
+		date="$(echo "$stats" | awk -F ': ' '/^Date:/ { sub(/^Date: /, ""); print }')"
+		unprocesseddate=$date
+		
+		if [ -z "$date" ]; then
+			date=""
+		else
+    			date="($date)"
+		fi;;
+
+	"SongId")
+		songid="$(echo "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')"
+		songidsave="$songid";;
+	"State")
+		state="$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"
+		if [ "$state" = "stop" ]; then
+			NOTIFYSEND_STATUS=""
+			OPPSTATUS=""
+			OPPSTATUS2=""
+		elif [ "$state" = "pause" ]; then
+			NOTIFYSEND_STATUS=""
+			OPPSTATUS=""
+			OPPSTATUS2=""
+		elif [ "$state" = "play" ]; then
+			NOTIFYSEND_STATUS=""
+			OPPSTATUS=""
+			OPPSTATUS2=""
+		fi;;
+	"RefreshVariables")
+		stats="$(mpdcom currentsong | tr -d '\r')"
+		stats2="$(mpdcom status | tr -d '\r')"
+		mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
+		filename=$Directory_MusicFolder/${mpc_file##*:}
+		#echo $mpc_file
+		;;
+	"SetAlbumCover")
+	case $UseHash in
+	"none")
+		previewname="$Directory_AlbumCover"/"$(echo $album $date)".png;;
+	"md5")
+		previewname="$Directory_AlbumCover"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png;;
+	"base64")
+		previewname="$Directory_AlbumCover"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png;;
+	"sha512")
+		previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png;;
+	"sha256" | "" | *)
+		previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png;;	
+	esac
+
+	[ -e "$previewname" ] || 
+	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
+
+	;;
+	"All")
+		pw_ReloadMetadata RefreshVariables
+		pw_ReloadMetadata Title
+		pw_ReloadMetadata Artist
+		pw_ReloadMetadata Album
+		pw_ReloadMetadata Date
+		pw_ReloadMetadata SongId
+		pw_ReloadMetadata State
+		pw_ReloadMetadata SetAlbumCover;;
+esac
+
+shopt -u nocasematch
+
+if [ -z "$mpc_file" ]; then
+		NOTIFYSEND_TITLE="Stopped"
+		NOTIFYSEND_SUBTITLE=""
+	else
+		if [ -z "$title" ]; then
+			NOTIFYSEND_TITLE="$mpc_file"
+		else
+			NOTIFYSEND_TITLE="$title"
+		fi
+		NOTIFYSEND_SUBTITLE="$(echo "$artist\n$album $date")"
+	fi 
+return 
+
 }
 
+pw_ReloadMetadata All
+
+function pw_Refresh() {
+pw_ReloadMetadata RefreshVariables
+pw_ReloadMetadata State
+
+if [ "$CurrentState" != "$state" ] || [ -z "$CurrentState" ]; then
+	pw_ReloadMetadata State
+	CurrentState=$state
+	#echo "Something changed in State, its now $state"
+else
+	echo -n
+	#echo "Nothing changed in state, its still $state"
+fi
+
+if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then 
+#echo "Something changed in File"
+	if [ "$CurrentTitle" != "$title" ] || [ -z "$CurrentTitle" ]; then	
+		pw_ReloadMetadata Title
+		#echo "Something changed in Title, its now $title"
+		CurrentTitle=$title
+	else
+		echo -n
+		#echo "Nothing changed in Title"
+	fi
+
+	if [ "$CurrentArtist" != "$artist" ] || [ -z "$CurrentArtist" ]; then
+		pw_ReloadMetadata Artist
+		#echo "Something changed in Artist, its now $artist"
+		CurrentArtist=$artist
+	else
+		echo -n
+		#echo "Nothing changed in Artist"
+	fi
+
+	if [ "$CurrentAlbum" != "$album" ] || [ -z "$CurrentAlbum" ]; then
+		pw_ReloadMetadata Album
+		#echo "Something changed in Album, its now $album"
+		CurrentArtist=$album
+	else
+		echo -n
+		#echo "Nothing changed in Album"
+	fi
+	if [ "$CurrentDate" != "$date" ] || [ -z "$CurrentDate" ]; then
+		pw_ReloadMetadata Date
+		#echo "Something changed in Date, its now $date"
+		CurrentDate=$date
+	else
+		echo -n
+		#echo "Nothing changed in date"
+	fi
+
+	if [ "$CurrentSongId" != "$songid" ] || [ -z "$CurrentSongId" ]; then
+		pw_ReloadMetadata SongId
+		#echo "Something changed in songid, its now $songid"
+		CurrentSongId=$songid
+	else
+		echo -n
+		#echo "Nothing changed in songid"
+	fi
+
+#	if [ "$CurrentState" != "$state" ] || [ -z "$CurrentState" ]; then
+#		pw_ReloadMetadata State
+#		echo "Something changed in state, its now $state"
+#		CurrentState=$state
+#	else
+#		echo "Nothing changed in state"
+#	fi
+	pw_ReloadMetadata SetAlbumCover
+	CurrentFile="$mpc_file"
+#	if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
+#		pw_Refresh
+#		echo 'Song changed to: '"'$title'"' by '"$artist"
+#		notifysendthing daemon &
+#		previousstate="$currentstate"
+#    	elif [ "$currentstate" != "$previousstate" ]; then
+#		pw_Refresh
+#		echo 'State changed to '"$currentstate"
+#		notifysendthing daemon &
+#		previousstate="$currentstate"
+#	fi
+#	if [ "$title" || ]; then
+#		pw_ReloadMetadata RefreshVariables	
+#	fi
+#else
+#	echo "File hasn't changed"
+fi 
+
+return 0 
+}
+
+pw_Refresh
+
+#while true; do
+#pw_Refresh
+#done
+
 function setmetadata() {
-	currentsong
 	title="$(echo "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
 	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ { sub(/^Artist: /, ""); print }')"
 	album="$(echo "$stats" | awk -F ': ' '/^Album:/ { sub(/^Album: /, ""); print }')"
@@ -565,15 +766,18 @@ case $Bar_Position in
 		Bar_Position="-b"
 		;;
 	"top" | "Top")
-		Bar_Position=""
+		Bar_Position="-f"
 		;;
 	*)
 	Bar_Position="-b"
 		;;
 esac
 
-dmenu_spawn() { 
-	dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground" 
+dmenu_spawn() {
+	# echo "$Bar_Position" "$DMENU_TITLE" "$Bar_Font" "$Color_Background" "$Color_Foreground" "$Color_SelectedBackground" "$Color_SelectedForeground"
+
+	dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground"
+	return 0
 }
 
 function mpdfunc()
@@ -658,13 +862,12 @@ shopt -u nocasematch
 
 function dmenum() {
 # Different dmenu routines
-
+sleep 0,1
+pw_Refresh
 case $1 in
 # Daemon option
 "daemon")
 # Sleep to mitigate some race conditions
-sleep 0,1
-setmetadata
 
 if [ -z "$OPPSTATUS2" ]; then
 mpd=("" "$OPPSTATUS" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
@@ -773,8 +976,6 @@ fi;;
 "open" | "Open")
 
 # Show dmenu with the controls
-sleep 0,1
-setmetadata
 if [ -z "$OPPSTATUS2" ]; then
 mpd=("" "$OPPSTATUS" "" "seek" "setvol" "single" "random" "repeat" "consume" "clear" "update" "shuffle" "crossfade")
 else
@@ -813,28 +1014,25 @@ echo "even when you're not running it."
 echo ""
 echo "This feature is still experimental, so please beware of anything that might happen"
 echo 'Daemon Mode' > /tmp/pw_daemonmode
-setmetadata
-ffmpeg_routine
+pw_Refresh
 previousstate="$state"
 trap quitdaemon SIGINT
 
 while true; do
-	setmetadata
+	pw_Refresh
 	currentsong_daemon="$title - $artist - $album $date"
-	currentstate="$state"
+	currentstate2="$state"
 
 	if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
-		setmetadata
-		ffmpeg_routine
+		pw_Refresh
 		echo 'Song changed to: '"'$title'"' by '"$artist"
 		notifysendthing daemon &
-		previoussong_daemon="$currentsong_daemon"
-    	elif [ "$currentstate" != "$previousstate" ]; then
-		setmetadata
-		ffmpeg_routine
-		echo 'State changed to '"$currentstate"
-		notifysendthing daemon &
 		previousstate="$currentstate"
+    	elif [ "$currentstate2" != "$previousstate2" ]; then
+		pw_Refresh
+		echo 'State changed to '"$currentstate2"
+		notifysendthing daemon &
+		previousstate2="$currentstate2"
 	fi
 	sleep 0,5
 done
@@ -842,7 +1040,7 @@ done
 }
 
 format() {
-setmetadata
+pw_Refresh
 #command="$*"
 #shift
 
@@ -874,18 +1072,15 @@ echo $output_text
 
 # CLI actions
 cli() {
+pw_Refresh
 case $1 in
 "help") help;;
 "pause" | "play" | "prev" | "previous" | "backward" | "stop" | "next" | "forward")
 	theinput3=$1
 	CLI=True
-	notifselect $theinput3 
-	setmetadata
-	ffmpeg_routine	
+	notifselect $theinput3 	
 ;;
 "menu")
-	setmetadata
-	ffmpeg_routine
 	dmenum open &;;
 "daemon") daemonize;;
 "clear" | "update" | "shuffle" | "playlist")
@@ -923,7 +1118,6 @@ case $1 in
 	fi	
 	;;
 "seek")
-setmetadata
 
 if [ -n "$3" ]; then
 	pw_Error ManyArguments
@@ -948,7 +1142,6 @@ shift
 format $*
 ;;
 "statsfornerds")
-	setmetadata
 	setpreviewname
 	ffmpeg_routine
 	echo 'Output: '
@@ -963,7 +1156,8 @@ format $*
 	echo 'Album: '"$album"
 	echo 'Date: '"$date"
 	echo
-	echo 'Hash: '"$UseHash";;
+	echo 'Hash: '"$UseHash"
+	echo 'DMENU SETTINGS: '\n"$Bar_Position" "$DMENU_TITLE" "$Bar_Font" "$Color_Background" "$Color_Foreground" "$Color_SelectedBackground" "$Color_SelectedForeground";;
 "console") nc "$MPD_Host" "$MPD_Port";;
 "info") programinfo;;
 "") notifysendthing action &;; 
