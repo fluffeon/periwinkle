@@ -619,6 +619,7 @@ if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then
 # My theory is that it's because of race conditions... yet again
 # This program has a lot of fucking issues with race conditions
 pw_ReloadMetadata Title
+pw_ReloadMetadata Date
 
 	if [ "$CurrentTitle" != "$title" ] || [ -z "$CurrentTitle" ]; then	
 		pw_ReloadMetadata Title
