@@ -135,7 +135,7 @@ done
 
 # Show extra control buttons in the popup
 
-Notify_ExtraButtons=true
+#Notify_ExtraButtons=false
 
 # Format the notification
 # Set the appearance of the notification to your liking.
@@ -246,7 +246,6 @@ case $Notify_FillEmptyTags in
 	FORMATCLI="TRUE"
 	;;
 esac
-set -x
 case $Notify_ExtraButtons in
 	"true")
 	NEWNOTIFBEHAVIOR=0;;
@@ -254,7 +253,7 @@ case $Notify_ExtraButtons in
 	NEWNOTIFBEHAVIOR=1
 	;;
 esac
-set +x
+
 shopt -u nocasematch
 	
 
@@ -310,14 +309,14 @@ esac
 notifysendthing() {
 
 shopt -s nocasematch
-set -x
+
 if [ -z "$OPPSTATUS" ] && [ $NEWNOTIFBEHAVIOR = 1 ]; then
 	NOTIFICATIONACTION=""
 elif [ $NEWNOTIFBEHAVIOR = 0 ]; then
 	pw_Refresh
 	NOTIFICATIONACTION="--action $OPPSTATUS=$OPPSTATUS --action forward="	
 fi
-set +x
+
 shopt -u nocasematch
 
 
@@ -360,7 +359,6 @@ case $1 in
 *) notify-send -t $Notify_Timeout -u low -r 27072 "$(format $Notify_TitlePlay)" "$(format $Notify_SubtitlePlay)" -i "$previewname";;
 esac
 
-set +x
 }
 
 function setpreviewname() {
@@ -612,15 +610,23 @@ else
 	#echo "Nothing changed in state, its still $state"
 fi
 
-if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then 
-#echo "Something changed in File"
+if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then
+
+# Every attribute changes except for the title, it is unknown what causes this bug
+# So in the meantime, this is here until a fix is found for this
+# Feel free to experiment
+#
+# My theory is that it's because of race conditions... yet again
+# This program has a lot of fucking issues with race conditions
+pw_ReloadMetadata Title
+
 	if [ "$CurrentTitle" != "$title" ] || [ -z "$CurrentTitle" ]; then	
 		pw_ReloadMetadata Title
 		#echo "Something changed in Title, its now $title"
 		CurrentTitle=$title
 	else
 		echo -n
-		#echo "Nothing changed in Title"
+		echo "Nothing changed in Title"
 	fi
 
 	if [ "$CurrentArtist" != "$artist" ] || [ -z "$CurrentArtist" ]; then
@@ -629,7 +635,7 @@ if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then
 		CurrentArtist=$artist
 	else
 		echo -n
-		#echo "Nothing changed in Artist"
+		echo "Nothing changed in Artist"
 	fi
 
 	if [ "$CurrentAlbum" != "$album" ] || [ -z "$CurrentAlbum" ]; then
@@ -638,7 +644,7 @@ if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then
 		CurrentArtist=$album
 	else
 		echo -n
-		#echo "Nothing changed in Album"
+		echo "Nothing changed in Album"
 	fi
 	if [ "$CurrentDate" != "$date" ] || [ -z "$CurrentDate" ]; then
 		pw_ReloadMetadata Date
@@ -685,7 +691,7 @@ if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then
 #	echo "File hasn't changed"
 fi 
 
-return 0 
+return 0
 }
 
 pw_Refresh
@@ -1021,13 +1027,13 @@ trap quitdaemon SIGINT
 while true; do
 	pw_Refresh
 	currentsong_daemon="$title - $artist - $album $date"
-	currentstate2="$state"
-
+		currentstate2="$state"
 	if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
 		pw_Refresh
 		echo 'Song changed to: '"'$title'"' by '"$artist"
 		notifysendthing daemon &
 		previousstate="$currentstate"
+		previoussong_daemon=$currentsong_daemon
     	elif [ "$currentstate2" != "$previousstate2" ]; then
 		pw_Refresh
 		echo 'State changed to '"$currentstate2"
@@ -1140,6 +1146,9 @@ FORMATCLI=TRUE
 command=$*
 shift
 format $*
+;;
+"clearpreviews")
+rm $Directory_AlbumCover/*.png
 ;;
 "statsfornerds")
 	setpreviewname
