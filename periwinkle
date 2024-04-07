@@ -109,7 +109,7 @@ done
 # Color_SelectedBackground = col_gray4
 # Color_SelectedForeground = col_cyan
 
-#Bar_Font=Serif:size=10
+#Bar_Font="Sans Serif":size=10
 #Color_Background=#5B544C
 #Color_Foreground=#E4E3E0
 #Color_SelectedBackground=#DA2A47
@@ -131,7 +131,7 @@ done
 # Notify timeout in seconds
 # Set 0 for no timeout
 
-#Notify_Timeout=3
+#Notify_Timeout=5
 
 # Show extra control buttons in the popup
 
@@ -178,7 +178,7 @@ defaultcheck() {
 	fi
 
 	if [ -z "$Notify_Timeout" ]; then
-		Notify_Timeout=3	
+		Notify_Timeout=5	
 	fi
 
 	if [ -z "$Notify_TitlePlay" ]; then
@@ -201,32 +201,28 @@ defaultcheck() {
 		Notify_ExtraButtons=false
 	fi
 
-	if [ -z "$Color_Background" ]; then
-		Color_Background=#5B544C
-	fi
-
 	if [ -z "$Bar_Position" ]; then
 		Bar_Position=top
 	fi
 
 	if [ -z "$Bar_Font" ]; then
-		Bar_Font=Serif:size=10
+		Bar_Font="Sans Serif":size=10
 	fi
 	
 	if [ -z "$Color_Background" ]; then
-		Color_Background=#5B544C
+		Color_Background=#C0C0C0
 	fi
 
 	if [ -z "$Color_Foreground" ]; then
-		Color_Foreground=#E4E3E0
+		Color_Foreground=#000000
 	fi
 
 	if [ -z "$Color_SelectedBackground" ]; then
-		Color_SelectedBackground=#DA2A47
+		Color_SelectedBackground=#000080
 	fi
 
 	if [ -z "$Color_SelectedForeground" ]; then
-		Color_SelectedForeground=#E4E3E0
+		Color_SelectedForeground=#FFFFFF
 	fi
 
 	if [ -z "$Directory_AlbumCover" ]; then
