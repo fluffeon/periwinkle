@@ -256,7 +256,7 @@ shopt -u nocasematch
 # Function to check if a value is a number
 function is_positive_number() {
   local input="$1"
-  if [[ $input =~ ^[0-9]+([.][0-9]+)?$ ]] && (( $(awk 'BEGIN { print '"$input"' >= 0 }') )); then
+  if [ $input -gt 0 ]; then
     return 0 # It's a positive number
   else
     return 1 # It's not a positive number or it contains non-numeric characters
