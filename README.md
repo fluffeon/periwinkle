@@ -1,5 +1,5 @@
 # Periwinkle
-**The cutest MPD client.**
+**The cutest MPD client.** *(now Bash-free!!)*
 
 Periwinkle is a fully-fledged MPD client that uses netcat to communicate with the MPD server directly, and libnotify + dmenu to control it, although you can also control Periwinkle through the CLI. For a shell script, I'd say it's surprisingly fast.
 It can also be used as a NCMPCPP notify-info or as a standalone daemon to notify when a song changes without a client open.
@@ -78,6 +78,9 @@ This will be good to analize later on to make independent Bash programs, I'm sti
 
 # Install
 Clone this repo and run `make install` without sudo.
+
+Make sure you have a POSIX-compatible shell. To change the shell that Periwinkle is gonna use, change the shebang at the beginning (default: /bin/sh).
+Periwinkle can now even work on minimal shells like the **Debian Almquist shell** *(dash)*, wild! Still not fish-compliant, so sucks to be the like 5 people that use this shell unironically.
 
 To activate the daemon with systemd, type `systemctl --user start periwinkle-daemon` or enable it using `systemctl --user enable periwinkle-daemon` to make it run every time you boot up the computer.
 
