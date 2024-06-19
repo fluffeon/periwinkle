@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/fish
 
 #    Periwinkle - A MPD client with tight integration with dmenu and libnotify.
 #    Copyright (C) 2023 Fen
@@ -30,12 +30,12 @@
 #
 # Choose where to point
 
-#MPD_Host=localhost
-#MPD_Port=6600
+#set -g MPD_Host localhost
+#set -g MPD_Port 6600
 
 # Choose your music directory
 
-#Directory_MusicFolder=$HOME/Music
+#set -g Directory_MusicFolder "$HOME/Music"
 
 # -----
 # DMENU
@@ -48,16 +48,16 @@
 # Color_SelectedBackground = col_gray4
 # Color_SelectedForeground = col_cyan
 
-#Bar_Font="Sans Serif":size=10
-#Color_Background=#5B544C
-#Color_Foreground=#E4E3E0
-#Color_SelectedBackground=#DA2A47
-#Color_SelectedForeground=#E4E3E0
+#set -g Bar_Font "Sans Serif:size=10"
+#set -g Color_Background "#5B544C"
+#set -g Color_Foreground "#E4E3E0"
+#set -g Color_SelectedBackground "#DA2A47"
+#set -g Color_SelectedForeground "#E4E3E0"
 
 # Location of DMENU, if it's at the bottom or top.
 # By default it's at the bottom
 
-#Bar_Position=bottom
+#set -g Bar_Position bottom
 
 # ----------------
 # PREVIEW SETTINGS
@@ -65,7 +65,7 @@
 #
 # Choose where to save the image previews
 
-#Directory_AlbumCover=$HOME/periwinkle
+#set -g Directory_AlbumCover "$HOME/periwinkle"
 
 # ---------------------
 # NOTIFICATION SETTINGS
@@ -74,28 +74,28 @@
 # Notify timeout in seconds
 # Set 0 for no timeout
 
-#Notify_Timeout=5
+#set -g Notify_Timeout 5
 
 # Show extra control buttons in the popup
 
-#Notify_ExtraButtons=false
+#set -g Notify_ExtraButtons false
 
 # Format the notification
 # Set the appearance of the notification to your liking.
 # Side note: %datep% is a variant of %date%, what it does is that if the metadata doesn't contain any date, it hides the parenthesis. Otherwise, if it contains a year, it shows them.
 
-#Notify_TitlePlay="%stateicon% %title%"
-#Notify_SubtitlePlay="%artist%\n%album% %datep%"
+#set -g Notify_TitlePlay "%stateicon% %title%"
+#set -g Notify_SubtitlePlay "%artist%\n%album% %datep%"
 
 # Set the title to appear when the queue is completely stopped
 
-#Notify_TitleStop="%stateicon% Stopped"
+#set Notify_TitleStop "%stateicon% Stopped"
 
 # Use formatting behavior from CLI, similar to previous versions of Periwinkle
 # So what this does is basically when a song has no title, it displays the filename instead. And if there's no artist, it shows "Unknown Artist"
 # By default, it's set on "false"
 
-#Notify_FillEmptyTags=false
+#set -g Notify_FillEmptyTags false
 
 # ----------------
 # PREVIEW SETTINGS
@@ -109,12 +109,13 @@
 # none | md5 | sha256 | sha512 | base64
 # The default is sha256
 
-#UseHash=sha256
+#set -g UseHash "sha256"
 
 # Down here is code!
 
-pw_Help() {
+function pw_Help
 	echo "Periwinkle - The cutest MPD client
+Fish shell edition
 
 	This is a CLI and also a semi-GUI client that can
 	be integrated into a DWM desktop by the use of
@@ -161,17 +162,16 @@ pw_Help() {
 		cli <cmd> - Runs a CLI command within dmenu
 
 	Advanced Commands
-		daemon - Run as a daemon to show song notifications on the background (experimental)
 		statsfornerds - Shows some environment variables related to Periwinkle
 		console - Pulls an interactive MPD control terminal (advanced)
 		direct - Sends commands to MPD without going into the interactive terminal
 
 	If you want to change the settings for this client, tinker with the periwinkle script.
 	All documentation is on the script."
-}
+end
 
-pw_AboutProgram() {
-	echo "
+function pw_AboutProgram
+echo "
     Periwinkle - The cutest MPD client
     Version:
 
@@ -191,333 +191,313 @@ pw_AboutProgram() {
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>."
-}
+end
 
-pw_Error() {
-	case $1 in
-		"UnknownCommand")
-			echo 'Error: '"$2"' is not a known command >.<'
-			exit 1;;
+function pw_Error
+	switch $argv[1]
+    case UnknownCommand
+			echo 'Error: "'"$argv[2]"'" is not a known command >.<'
+			exit 1
 	
-		"InvalidInteger")
-			echo 'Error: "'"$2"'" is not a valid integer -w-'
-			exit 1;;
+    case InvalidInteger
+			echo 'Error: "'"$argv[2]"'" is not a valid integer -w-'
+			exit 1
 
-		"InvalidNumber")
-			echo 'Error: "'"$2"'" is not a valid number -w-'
-			exit 1;;
+    case InvalidNumber
+			echo 'Error: "'"$argv[2]"'" is not a valid number -w-'
+			exit 1
 
-		"FewArguments")
+    case FewArguments
 			echo "Error: Not enough arguments... ;w;"
-			exit 1;;
+			exit 1
 
-		"ManyArguments")
+    case ManyArguments
 			echo "Error: T-That's too many arguments!! >w<"
-			exit 1;;
+			exit 1
 
-		"WrongArguments")
+    case WrongArguments
 			echo "Error: Wrong arguments for this command... :<"
-			exit 1;;
+			exit 1
 
-		"PlaylistClear")
-			echo 'Error: You can'"'"'t "'"$2"'" if you have no songs in your queue or if the queue is stopped! >:3'
-			exit 1;;
+    case PlaylistClear
+			echo 'Error: You can'"'"'t "'"$argv[2]"'" if you have no songs in your queue or if the queue is stopped! >:3'
+			exit 1
 
-		"" | *)
+    case '*'
 			echo "Error: Something went wrong... o.O
 			If you see this error please open a issue report about it"
-			exit 1;;
-	esac
-}
+			exit 1
+  end
+end
 
 # Check if the necessary dependencies are installed
-pw_MissingDependency() {
-	case $cmd in
-		"notify-send")
+function pw_MissingDependency
+	switch $cmd
+    case notify-send
 			echo "Dependency missing: 'notify-send' (libnotify) is required but not found. Please install it."
-			exit 1;;
+			exit 1
 
-		"nc")
+    case nc
 			echo "Dependency missing: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it."
-			exit 1;;
+			exit 1
 
-		*)
+    case '*'
 			echo 'Dependency missing: '"'$cmd'"' is required but not found. Please install it.'
-			exit 1;;
-	esac
-}
+			exit 1
+  end
+end
 
 # Placeholder default check. Will be more sophisticated in the future.
-pw_FillInTheBlanks() {
+function pw_FillInTheBlanks
 
-	if [ -z "$MPD_Host" ]; then
-		MPD_Host=localhost
-	fi
+	if [ -z "$MPD_Host" ]
+		set -g MPD_Host "localhost"
+  end
 	
-	if [ -z "$MPD_Port" ]; then
-		MPD_Port=6600
-	fi
+	if [ -z "$MPD_Port" ]
+		set -g MPD_Port 6600
+  end
 
-	if [ -z "$Notify_Timeout" ]; then
-		Notify_Timeout=5	
-	fi
+	if [ -z "$Notify_Timeout" ]
+		set -g Notify_Timeout 5	
+  end
 
-	if [ -z "$Notify_TitlePlay" ]; then
-		Notify_TitlePlay='%stateicon% "%title%"'
-	fi
+	if [ -z "$Notify_TitlePlay" ]
+		set -g Notify_TitlePlay '%stateicon% "%title%"'
+  end
 
-	if [ -z "$Notify_SubtitlePlay" ]; then
-		Notify_SubtitlePlay="by %artist%\nfrom %album% %datep%"	
-	fi
+	if [ -z "$Notify_SubtitlePlay" ]
+		set -g Notify_SubtitlePlay "by %artist%\nfrom %album% %datep%"	
+  end
 
-	if [ -z "$Notify_TitleStop" ]; then
-		Notify_TitleStop="%stateicon% Stopped"
-	fi
+	if [ -z "$Notify_TitleStop" ]
+		set -g Notify_TitleStop "%stateicon% Stopped"
+  end
 
-	if [ -z "$Notify_FillEmptyTags" ]; then
-		Notify_FillEmptyTags=false	
-	fi
+	if [ -z "$Notify_FillEmptyTags" ]
+		set -g Notify_FillEmptyTags false	
+  end
 
-	if [ -z "$Notify_ExtraButtons" ]; then
-		Notify_ExtraButtons=false
-	fi
+	if [ -z "$Notify_ExtraButtons" ]
+		set -g Notify_ExtraButtons false
+  end
 
-	if [ -z "$Bar_Position" ]; then
-		Bar_Position=top
-	fi
+	if [ -z "$Bar_Position" ]
+		set -g Bar_Position top
+  end
 
-	if [ -z "$Bar_Font" ]; then
-		Bar_Font="Sans Serif":size=10
-	fi
+	if [ -z "$Bar_Font" ]
+		set -g Bar_Font "Sans Serif:size=10"
+  end
 	
-	if [ -z "$Color_Background" ]; then
-		Color_Background=#C0C0C0
-	fi
+	if [ -z "$Color_Background" ]
+		set -g Color_Background "#C0C0C0"
+  end
 
-	if [ -z "$Color_Foreground" ]; then
-		Color_Foreground=#000000
-	fi
+	if [ -z "$Color_Foreground" ]
+		set -g Color_Foreground "#000000"
+  end
 
-	if [ -z "$Color_SelectedBackground" ]; then
-		Color_SelectedBackground=#000080
-	fi
+	if [ -z "$Color_SelectedBackground" ]
+    set -g Color_SelectedBackground "#000080"
+  end
 
-	if [ -z "$Color_SelectedForeground" ]; then
-		Color_SelectedForeground=#FFFFFF
-	fi
+	if [ -z "$Color_SelectedForeground" ]
+		set -g Color_SelectedForeground "#FFFFFF"
+  end
 
-	if [ -z "$Directory_AlbumCover" ]; then
-		Directory_AlbumCover=$HOME/periwinkle	
-	fi
+	if [ -z "$Directory_AlbumCover" ]
+		set -g Directory_AlbumCover "$HOME/periwinkle"
+  end
 
-	if [ -z "$Directory_MusicFolder" ]; then
-		Directory_MusicFolder=$HOME/Music	
-	fi
-}
+	if [ -z "$Directory_MusicFolder" ]
+		set -g Directory_MusicFolder "$HOME/Music"
+  end
+end
 
 # Function to check if a value is a number
-pw_isPositiveNumber() {
-	if [ "$1" -gt 0 ]; then
+function pw_isPositiveNumber
+	if [ "$argv[1]" -gt 0 ]
 		return 0 # It's a positive number
 	else
 		return 1 # It's not a positive number or it contains non-numeric characters
-	fi
-}
+  end
+end
 
 # Function to check if the integer is within the desired range
-pw_isNumberInRange() {
-	if [ "$1" -gt "$MINIMUMVAL" ] && [ "$1" -lt "$MAXIMUMVAL" ]; then
+function pw_isNumberInRange
+	if test "$argv[1]" -gt "$argv[2]" && test "$argv[1]" -lt "$argv[3]"
 		return 0
 	else
 		return 1
-	fi
-}
+  end
+end
 
-pw_CheckNumber() {
-	# Read input and validate it until a valid integer in the range is provided
-	case $2 in
-		"inRange")
-			if ! pw_isNumberInRange "$1"; then
+function pw_CheckNumber
+  # Read input and validate it until a valid integer in the range is provided
+	switch "$argv[1]"
+    case "inRange"
+			if ! pw_isNumberInRange "$argv[2]" "$argv[3]" "$argv[4]"
 				# Set the variable with the validated integer
-				pw_Error InvalidInteger "$1"
-			fi;;
+				pw_Error InvalidInteger "$argv[2]"
+      end
 
-		"isPositive")
-			if ! pw_isPositiveNumber "$1"; then
-				pw_Error InvalidNumber "$1"
-			fi;;
+    case "isPositive"
+			if ! pw_isPositiveNumber "$argv[2]"
+				pw_Error InvalidNumber "$argv[2]"
+      end
 
-		*)
-			echo "$1"
+    case '*'
+			echo "$argv[2]"
 			echo "DEBUG INFO: Invalid arguments for this function"
 			echo "If you see this message, please open a issue about it."
-			pw_Error;;
-	esac
-}
+			pw_Error
+  end
+end
 
-pw_SpawnNotification() {
-	if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]; then
-		NOTIFICATIONACTION=""
-	elif [ "$NEWNOTIFBEHAVIOR" = 0 ]; then
+function pw_SpawnNotification
+	if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]
+		set -g NOTIFICATIONACTION ""
+  else if [ "$NEWNOTIFBEHAVIOR" = 0 ]
 		pw_Refresh
-		NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
-	fi
+		set -g NOTIFICATIONACTION "--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
+  end
 
-	if [ -z "$mpc_file" ]; then
-		Notify_TitlePlay="$Notify_TitleStop"
-		Notify_SubtitlePlay=""
-	fi
+	if [ -z "$mpc_file" ]
+		set Notify_TitlePlay "$Notify_TitleStop"
+		set Notify_SubtitlePlay ""
+  end
 	
-	case $1 in
-		"action" | "daemon")
-			if [ -z "$NOTIFICATIONACTION" ]; then					
-				CONDITIONOPEN=$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" -i "$previewname" --action open=Show)
+	switch $argv[1]
+    case action
+			if [ -z "$NOTIFICATIONACTION" ]					
+				set -g CONDITIONOPEN $(notify-send -t "$Notify_Timeout" -u low -r 27072 "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" -i "$previewname" --action open=Show)
 			else
-				CONDITIONOPEN=$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" -i "$previewname" --action open=Show "$NOTIFICATIONACTION")
-			fi
+				set -g CONDITIONOPEN $(notify-send -t "$Notify_Timeout" -u low -r 27072 "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" -i "$previewname" --action open=Show "$NOTIFICATIONACTION")
+      end
 
-			if [ -z "$CONDITIONOPEN" ]; then
-				return 0
-			elif [ -s /tmp/pw_daemonmode ]; then
-				if [ "$CONDITIONOPEN" = "$OPPSTATUS" ] || [ "$CONDITIONOPEN" = "forward" ]; then
-					pw_UserSelection "$CONDITIONOPEN"
-					return 0
-				fi
-				pw_MenuOptions daemon
-			elif [ "$CONDITIONOPEN" = "$OPPSTATUS" ] || [ "$CONDITIONOPEN" = "forward" ]; then
+			if [ -z "$CONDITIONOPEN" ]
+				return 0 
+      else if [ "$CONDITIONOPEN" = "$OPPSTATUS" ] || [ "$CONDITIONOPEN" = "forward" ]
 				pw_UserSelection "$OPPSTATUS"
 				return 0
 			else
 				pw_MenuOptions "$CONDITIONOPEN"
-			fi
-			;;
+      end
 
-		*) 
-			notify-send -t '"'"$Notify_Timeout"'"' -u low -r 27072 '"'"$(pw_Print "$Notify_TitlePlay")"'"' '"'"$(pw_Print '"'"$Notify_SubtitlePlay")"'"' -i '"'"$previewname"'"';;
-	esac
-}
-
-pw_HashSongName() {
-	case $UseHash in
-		"none")
-			previewname="$Directory_AlbumCover"'/'"$album $date"'.png';;
-		"md5")
-			previewname="$Directory_AlbumCover"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png;;
-		"base64")
-			previewname="$Directory_AlbumCover"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png;;
-		"sha512")
-			previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png;;
-		"sha256" | "" | *)
-			previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png;;	
-	esac
-}
+    case '*'
+			notify-send -t '"'"$Notify_Timeout"'"' -u low -r 27072 '"'"$(pw_Print "$Notify_TitlePlay")"'"' '"'"$(pw_Print '"'"$Notify_SubtitlePlay")"'"' -i '"'"$previewname"'"'
+  end
+end
 
 # Clean the stinky output
-pw_CleanOutput() {
+function pw_CleanOutput
 	awk '!/^OK.*$/'
-}
+end
 
 # Function to send commands to MPD which is netcat-agnostic
-pw_MPDCommand() { printf "%s\n" "$1" "close" | nc "$MPD_Host" "$MPD_Port"; }
+function pw_MPDCommand
+  printf "%s\n" "$argv[1]" "close" | nc "$MPD_Host" "$MPD_Port"
+end
 
-pw_ReloadMetadata() {
+function pw_ReloadMetadata
 
-	case $1 in
-		"Title")
-			title="$(echo "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
-			titlesave="$title"
+	switch $argv[1]
+    case Title
+			set -g title "$(echo "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
+			set -g titlesave "$title"
 
-			if [ -z "$title" ]; then
-				title="$mpc_file"
-			fi;;
+			if [ -z "$title" ]
+				set -g title "$mpc_file"
+      end
 
-		"Artist")
-			artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ { sub(/^Artist: /, ""); print }')"
-			artistsave="$artist"
+    case Artist
+			set -g artist "$(echo "$stats" | awk -F ': ' '/^Artist:/ { sub(/^Artist: /, ""); print }')"
+			set -g artistsave "$artist"
 
-			if [ -z "$artist" ]; then
-				artist="Unknown Artist"
-			fi;;
+			if [ -z "$artist" ]
+				set -g artist "Unknown Artist"
+      end
 
-		"Album")
-			album="$(echo "$stats" | awk -F ': ' '/^Album:/ { sub(/^Album: /, ""); print }')";;
+    case Album
+			set -g album "$(echo "$stats" | awk -F ': ' '/^Album:/ { sub(/^Album: /, ""); print }')"
 
-		"Date")
-			date="$(echo "$stats" | awk -F ': ' '/^Date:/ { sub(/^Date: /, ""); print }')"
-			unprocesseddate=$date
+    case Date
+			set -g date "$(echo "$stats" | awk -F ': ' '/^Date:/ { sub(/^Date: /, ""); print }')"
+			set -g unprocesseddate $date
 		
-			if [ -z "$date" ]; then
-				date=""
+			if [ -z "$date" ]
+				set -g date ""
 			else
-    			date="($date)"
-			fi;;
+    		set -g date "($date)"
+      end
 
-		"SongId")
-			songid="$(echo "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')";;
+    case SongId
+			set -g songid "$(echo "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')"
 
-		"State")
-			state="$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"
-			if [ "$state" = "stop" ]; then
-				NOTIFYSEND_STATUS=""
-				OPPSTATUS=""
-				OPPSTATUS2=""
-			elif [ "$state" = "pause" ]; then
-				NOTIFYSEND_STATUS=""
-				OPPSTATUS=""
-				OPPSTATUS2=""
-			elif [ "$state" = "play" ]; then
-				NOTIFYSEND_STATUS=""
-				OPPSTATUS=""
-				OPPSTATUS2=""
-			fi;;
+    case State
+			set -g state "$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"
+			if [ "$state" = "stop" ]
+				set -g NOTIFYSEND_STATUS ""
+				set -g OPPSTATUS ""
+				set -g OPPSTATUS2 ""
+      else if [ "$state" = "pause" ]
+				set -g NOTIFYSEND_STATUS ""
+				set -g OPPSTATUS ""
+				set -g OPPSTATUS2 ""
+      else if [ "$state" = "play" ]
+				set -g NOTIFYSEND_STATUS ""
+				set -g OPPSTATUS ""
+				set -g OPPSTATUS2 ""
+      end
 
-		"RefreshVariables")
-			stats="$(pw_MPDCommand currentsong | tr -d '\r')"
-			stats2="$(pw_MPDCommand status | tr -d '\r')"
-			mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
-			filename="$Directory_MusicFolder"'/'"$mpc_file";;
+    case RefreshVariables
+			set -g stats "$(pw_MPDCommand currentsong | tr -d '\r')"
+			set -g stats2 "$(pw_MPDCommand status | tr -d '\r')"
+			set -g mpc_file "$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
+			set -g filename "$Directory_MusicFolder"'/'"$mpc_file";;
 
-		"SetAlbumCover")
-			case $UseHash in
-				"none")
-					previewname="$Directory_AlbumCover"/"$album $date.png";;
-				"md5")
-					previewname="$Directory_AlbumCover"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)".png;;
-				"base64")
-					previewname="$Directory_AlbumCover"/"$(echo "$album $date" | base64 | cut -d' ' -f1)".png;;
-				"sha512")
-					previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)".png;;
-				"sha256" | "" | *)
-					previewname="$Directory_AlbumCover"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)".png;;	
-			esac
+    case SetAlbumCover
+			switch $UseHash
+        case none
+					set -g previewname "$Directory_AlbumCover"/"$album $date.png";;
+        case md5
+					set -g previewname "$Directory_AlbumCover"/"$(echo "$album $date" | md5sum | cut -d' ' -f1)"'.png'
+        case base64
+					set -g previewname "$Directory_AlbumCover"/"$(echo "$album $date" | base64 | cut -d' ' -f1)"'.png'
+        case sha512
+					set -g previewname "$Directory_AlbumCover"/"$(echo "$album $date" | sha512sum | cut -d' ' -f1)"'.png'
+        case sha256 '*'
+					set -g previewname "$Directory_AlbumCover"/"$(echo "$album $date" | sha256sum | cut -d' ' -f1)"'.png'	
+      end
 
 			[ -e "$previewname" ] || 
-			ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1;;
+			ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
 
-		"All")
+    case All
 			pw_ReloadMetadata RefreshVariables
+      pw_ReloadMetadata State
 			pw_ReloadMetadata Title
 			pw_ReloadMetadata Artist
 			pw_ReloadMetadata Album
 			pw_ReloadMetadata Date
 			pw_ReloadMetadata SongId
-			pw_ReloadMetadata State
-			pw_ReloadMetadata SetAlbumCover;;
-	esac
+			pw_ReloadMetadata SetAlbumCover
+  end
 
 	return 
-}
+end
 
-pw_Refresh() {
+function pw_Refresh
 	pw_ReloadMetadata RefreshVariables
 	pw_ReloadMetadata State
 
-	if [ "$CurrentState" != "$state" ] || [ -z "$CurrentState" ]; then
+	if [ "$CurrentState" != "$state" ] || [ -z "$CurrentState" ]
 		pw_ReloadMetadata State
-		CurrentState=$state
-	fi
+		set CurrentState $state
+	end
 
-	if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]; then
+	if [ "$mpc_file" != "$CurrentFile" ] || [ -z "$CurrentFile" ]
 
 		# Every attribute changes except for the title, it is unknown what causes this bug
 		# So in the meantime, this is here until a fix is found for this
@@ -529,374 +509,204 @@ pw_Refresh() {
 		pw_ReloadMetadata Title
 		pw_ReloadMetadata Date
 
-		if [ "$CurrentTitle" != "$title" ] || [ -z "$CurrentTitle" ]; then	
+		if [ "$CurrentTitle" != "$title" ] || [ -z "$CurrentTitle" ]	
 			pw_ReloadMetadata Title
-			CurrentTitle=$title
-		fi
+			set -g CurrentTitle $title
+    end
 
-		if [ "$CurrentArtist" != "$artist" ] || [ -z "$CurrentArtist" ]; then
+		if [ "$CurrentArtist" != "$artist" ] || [ -z "$CurrentArtist" ]
 			pw_ReloadMetadata Artist
-			CurrentArtist=$artist
-		fi
+			set -g CurrentArtist $artist
+    end
 
-		if [ "$CurrentAlbum" != "$album" ] || [ -z "$CurrentAlbum" ]; then
+		if [ "$CurrentAlbum" != "$album" ] || [ -z "$CurrentAlbum" ]
 			pw_ReloadMetadata Album
-			CurrentArtist=$album
-		fi
+			set -g CurrentArtist $album
+    end
 
-		if [ "$CurrentDate" != "$date" ] || [ -z "$CurrentDate" ]; then
+		if [ "$CurrentDate" != "$date" ] || [ -z "$CurrentDate" ]
 			pw_ReloadMetadata Date
-			CurrentDate=$date
-		fi
+			set -g CurrentDate $date
+    end
 
-		if [ "$CurrentSongId" != "$songid" ] || [ -z "$CurrentSongId" ]; then
+		if [ "$CurrentSongId" != "$songid" ] || [ -z "$CurrentSongId" ]
 			pw_ReloadMetadata SongId
-			CurrentSongId=$songid
-		fi
+			set -g CurrentSongId $songid
+    end
 
 		pw_ReloadMetadata SetAlbumCover
-		CurrentFile="$mpc_file"
+		set -g CurrentFile "$mpc_file"
 
-	fi 
+  end 
 
 	return 0
-}
+end
 
-pw_PullSongInfo() {
-	title="$(echo "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
-	artist="$(echo "$stats" | awk -F ': ' '/^Artist:/ { sub(/^Artist: /, ""); print }')"
-	album="$(echo "$stats" | awk -F ': ' '/^Album:/ { sub(/^Album: /, ""); print }')"
-	date="$(echo "$stats" | awk -F ': ' '/^Date:/ { sub(/^Date: /, ""); print }')"
-	songid="$(echo "$stats2" | awk -F ': ' '/^song:/ { sub(/^song: /, ""); print }')"
-	state="$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"	
-
-	unprocesseddate=$date
-	if [ -z "$date" ]; then
-		date=""
-	else
-    		date="($date)"
-	fi
-
-	titlesave="$title"
-	artistsave="$artist"
-
-	if [ -z "$title" ]; then
-		title="$mpc_file"
-	fi
-
-	if [ -z "$artist" ]; then
-		artist="Unknown Artist"
-	fi
-	
-	if [ "$state" = "stop" ]; then
-		NOTIFYSEND_STATUS=""
-		OPPSTATUS=""
-		OPPSTATUS2=""
-	elif [ "$state" = "pause" ]; then
-		NOTIFYSEND_STATUS=""
-		OPPSTATUS=""
-		OPPSTATUS2=""
-	elif [ "$state" = "play" ]; then
-		NOTIFYSEND_STATUS=""
-		OPPSTATUS=""
-		OPPSTATUS2=""
-	fi
-	return 0
-}
-
-pw_SetAlbumCover() {	
-	pw_HashSongName
-	[ -e "$previewname" ] || 
-	ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1
-}
-
-pw_SpawnMenu() {
+function pw_SpawnMenu
 	# echo "$Bar_Position" "$DMENU_TITLE" "$Bar_Font" "$Color_Background" "$Color_Foreground" "$Color_SelectedBackground" "$Color_SelectedForeground"
 
-	dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground"
+	dmenu "$Bar_Position" -i -p "$argv" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground"
 	return 0
-}
+end
 
-pw_MPDCommandButFiltered() {
+function pw_MPDCommandButFiltered
 
-    arglist="$1"
+    set arglist $argv[1]
      
-    [ "$2" != "" ] &&                   arglist="$arglist "$2""
+    [ "$argv[2]" != "" ] &&                   set arglist "$arglist "$argv[2]""
     
-    [ "$3" != "" ] && [ "$4" = "" ]  && arglist="$arglist \"$3\""
+    [ "$argv[3]" != "" ] && [ "$argv[4]" = "" ]  && set arglist "$arglist \"$argv[3]\""
     
-    [ "$3" != "" ] && [ "$4" != "" ] && arglist="$arglist $3 \"$4\""
+    [ "$argv[3]" != "" ] && [ "$argv[4]" != "" ] && set arglist "$arglist $argv[3] \"$argv[4]\""
 
-    [ "$1" = "add" ] || [ "$1" = "save" ] || [ "$1" = "rm" ] && arglist="$1 \"$2\""
+    [ "$argv[1]" = "add" ] || [ "$argv[1]" = "save" ] || [ "$argv[1]" = "rm" ] && set arglist "$argv[1] \"$argv[2]\""
     
     pw_MPDCommand "$arglist" | pw_CleanOutput
-}
+end
 
-pw_UserSelection() { 
+function pw_UserSelection 
 
 	# Execute the desired action
-	case $1 in
-    	"" | "prev" | "previous" | "backward")
-			pw_MPDCommand previous > /dev/null 2>&1
-			if [ -s /tmp/pw_daemonmode ]; then
-				return 0
-			fi
-
-			pw_SpawnNotification action &;;
-
-    	"" | "pause")
+	switch $argv[1]
+    case  prev previous backward
+			pw_MPDCommand previous > /dev/null 2>&1	
+      
+    case  pause
 			pw_MPDCommand pause > /dev/null 2>&1	
-			if [ -s /tmp/pw_daemonmode ]; then
-				return 0
-			fi
 
-			pw_SpawnNotification action &;;
-
-    	"" | "play")
+    case  play
 			pw_MPDCommand play > /dev/null 2>&1
-			if [ -s /tmp/pw_daemonmode ]; then
-				return 0
-			fi
 
-			pw_SpawnNotification action &;;
-		
-    	"" | "stop")
+    case  stop
 			pw_MPDCommand stop > /dev/null 2>&1
-			if [ -s /tmp/pw_daemonmode ]; then
-				return 0
-			fi
 
-			pw_SpawnNotification action &;;
-
-    	"" | "next" | "forward")
+    case  next forward
 			pw_MPDCommand next > /dev/null 2>&1
-			if [ -s /tmp/pw_daemonmode ]; then
-				return 0
-			fi
+			
+    case seek volume setvol vol crossfade
+			pw_MenuOptions integer "$argv[1]"
 
-			pw_SpawnNotification action &;;
+    case single random repeat consume
+      pw_MenuOptions boolean "$argv[1]"
 
-		"seek" | "volume" | "setvol" | "vol" | "crossfade")
-			SELECTED=$1
-			INTEGER=$2	
-			pw_MenuOptions integer;;
+    case clear
+			pw_MenuOptions clear
 
-		"cli" | "CLI")
-			shift
-			CALLED_CMD=$*
-			pw_MenuOptions cli "$CALLED_CMD";;
+    case update shuffle
+			pw_CLICommand "$argv[1]"
 
-		"single" | "random" | "repeat" | "consume")
-			CALLED_CMD="$1"
-			pw_MenuOptions boolean "$2";;
+    case '*'
+			pw_MenuOptions $argv[1]
 
-		"clear")
-			CALLED_CMD="$1"
-			pw_MenuOptions confirm "$2";;
+  end
+end
 
-		"update" | "shuffle")
-			pw_CLICommand "$1";;
-
-		*) 
-			prompt="";;
-
-	esac
-}
-
-pw_MenuOptions() {
-	# Different dmenu routines
+function pw_MenuOptions
 	sleep 0.1
 	pw_Refresh
-	case $1 in
-	# Daemon option
-		"daemon")
-		# Sleep to mitigate some race conditions
+	switch $argv[1]
 
-			if [ -z "$OPPSTATUS2" ]; then
-				mpd=':'"$OPPSTATUS"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
-			else
-				mpd=':'"$OPPSTATUS:$OPPSTATUS2"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
-			fi
+    # Different commands
+    case integer
+			switch $argv[2]
+        case setvol Setvol vol Vol volume
+					set DMENU_TITLE 'Set volume (0-100)'
+					set SELECTED "setvol"
 
-			if [ "$CLI" = True ]; then
-				exit 0
-			fi
+        case seek Seek
+					set DMENU_TITLE 'Seek to where?'
+					set SELECTED "seek"
 
-			if [ -z "$mpc_file" ]; then
-				DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
-			else
-				DMENU_TITLE="$NOTIFYSEND_STATUS $artist - $title"
-			fi
+        case crossfade
+					set DMENU_TITLE 'Set crossfade:'
+					set SELECTED "crossfade"
+      end
 
-			# Show dmenu with the controls
-			if [ -s /tmp/pw_daemonmode ]; then	
-				prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
-				pw_UserSelection "$prompt" &
-			fi
+			set prompt "$(printf '%s\n' "Cancel" | pw_SpawnMenu $DMENU_TITLE)"
 
-			if [ -z "$prompt" ]; then
-				return 0
-			else
-				pw_MenuOptions daemon
-			fi;;
-
-		# Different commands
-		"integer")
-			case $SELECTED in
-				"setvol" | "Setvol" | "vol" | "Vol" | "volume")
-					DMENU_TITLE='Set volume (0-100)'
-					SELECTED="setvol";;
-				"seek" | "Seek")
-					DMENU_TITLE='Seek to where?'
-					SELECTED="seek";;
-				"crossfade")
-					DMENU_TITLE='Set crossfade:'
-					SELECTED="crossfade";;
-			esac
-
-			if [ -z "$INTEGER" ]; then
-				prompt=$(pw_SpawnMenu)
-				if [ -z "$prompt" ]; then
-					pw_CLICommand menu
-					return 0
-				fi
-				pw_CLICommand "$SELECTED" "$prompt"
-				return 0
-
-			elif [ -n "$INTEGER" ]; then
-				pw_CLICommand "$SELECTED" "$INTEGER"
-				return 0
-			fi;;
-
-		"boolean")
-			case $CALLED_CMD in
-				"single")
-					mpd="0:1:oneshot";;
-				*)
-					mpd="0:1";;
-			esac
-
-			if [ -z "$2" ]; then
-				DMENU_TITLE="Set boolean for $CALLED_CMD"
-				prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
-
-				if [ -z "$prompt" ]; then
-					pw_CLICommand menu
-					return 0
-				fi
-				pw_CLICommand "$CALLED_CMD" "$prompt"
-
-			elif [ -n "$2" ]; then
-				theinput2="$2"
-				pw_CLICommand "$CALLED_CMD" "$theinput2"
-			fi;;
-
-		"confirm")
-			mpd="Yes:No"
-			DMENU_TITLE="Are you sure you want to clear the playlist?"
-			prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
-
-			case $prompt in
-				"Yes")
-					pw_CLICommand "$CALLED_CMD";;
-				"No")
-					prompt="";;
-			esac
-
-			if [ -z "$prompt" ]; then
+			if [ "$prompt" = "Cancel" ] || [ -z "$prompt" ]
 				pw_CLICommand menu
 				return 0
-			fi;;
+      else
+			  pw_CLICommand "$SELECTED" "$prompt"
+			  return 0
+      end
+    
+    case boolean
+			switch $argv[2]
+        case single
+					set mpd "0:1:oneshot"
+        case '*'
+					set mpd "0:1"
+      end
 
-		"CLI" | "cli")
-			DMENU_TITLE='Periwinkle:'
+			
+			set DMENU_TITLE "Set boolean for $argv[2]"
+			set prompt "$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu $DMENU_TITLE)"
 
-			if [ -z "$CALLED_CMD" ]; then
-				prompt=$(pw_SpawnMenu)
-				pw_CLICommand "$prompt"
+			if [ -z "$prompt" ]
+				pw_CLICommand menu
+				return 0
+      end
+			pw_CLICommand "$argv[2]" "$prompt"
 
-			elif [ -n "$CALLED_CMD" ]; then
-				pw_CLICommand "$CALLED_CMD"
-			fi;;
+    case clear		
+      set mpd "Yes:No"
+      set DMENU_TITLE "Are you sure you want to clear the playlist?"
+			set prompt "$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu $DMENU_TITLE)"
+
+			switch $prompt
+        case Yes
+					pw_CLICommand clear
+			  case No '*'
+					set prompt ""
+      end
+
+			if [ -z "$prompt" ]
+				pw_CLICommand menu
+				return 0
+      end
 
 		# No arguments
-		"open" | "Open")
+    case open Open
 
 		# Show dmenu with the controls
-			if [ -z "$OPPSTATUS2" ]; then
-				mpd=':'"$OPPSTATUS"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
+			if [ -z "$OPPSTATUS2" ]
+				set mpd ':'"$OPPSTATUS"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
 
 			else
-				mpd=':'"$OPPSTATUS:$OPPSTATUS2"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
-			fi
+				set mpd ':'"$OPPSTATUS:$OPPSTATUS2"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
+      end
 
-			if [ -z "$mpc_file" ]; then
-				DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+			if [ -z "$mpc_file" ]
+				set DMENU_TITLE "$NOTIFYSEND_STATUS Stopped"
 
 			else
-				DMENU_TITLE="$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
-			fi
+				set DMENU_TITLE "$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
+      end
 
-			prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
+			set -g prompt "$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu $DMENU_TITLE)"
 			pw_UserSelection "$prompt"
-			if [ -z "$prompt" ]; then
+			if [ -z "$prompt" ]
 				exit 0
 			else
 				pw_MenuOptions Open
-			fi;;
-	esac
-}
+    end
+  end
+end
 
-pw_QuitDaemon() {
-	echo 'Quitting...'
-	rm /tmp/pw_daemonmode
-	exit 0
-}
-
-pw_PeriwinkleDaemon() {		
-	echo "You're now running Periwinkle as a daemon!"
-	echo "The purpose of this feature is to make it so that you get MPD notifications"
-	echo "even when you're not running it."
-	echo ""
-	echo "This feature is still experimental, so please beware of anything that might happen"
-	echo 'Daemon Mode' > /tmp/pw_daemonmode
+function pw_Print
 	pw_Refresh
-	trap pw_QuitDaemon INT
-	trap pw_QuitDaemon TERM
-
-	while true; do
-		pw_Refresh
-		currentsong_daemon="$title - $artist - $album $date"
-		currentstate2="$state"
-		if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
-			pw_Refresh
-			echo 'Song changed to: '"'$title'"' by '"$artist"
-			pw_SpawnNotification daemon &
-			previoussong_daemon="$currentsong_daemon"
-    	elif [ "$currentstate2" != "$previousstate2" ]; then
-			pw_Refresh
-			echo 'State changed to '"$currentstate2"
-			pw_SpawnNotification daemon &
-			previousstate2="$currentstate2"
-		fi
-		sleep 0,5
-	done
-}
-
-pw_Print() {
-	pw_Refresh
-
-	case $FORMATCLI in
-		"TRUE")
-			title="$titlesave"
-			artist="$artistsave"
-	esac
-
-	input_arguments="$*"
+  
+	switch $FORMATCLI
+    case TRUE
+			set title "$titlesave"
+			set artist "$artistsave"
+  end
 
 	# Trim leading space and output the captured input arguments
-	input_arguments="${input_arguments# }"
-	output_text=$(echo "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v datepvar="$date" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" -v filenamevar="$mpc_file" -v dirvar="$filename" '{
+	set input_arguments (string trim "$argv")
+	set -g output_text $(echo "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v datepvar="$date" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" -v filenamevar="$mpc_file" -v dirvar="$filename" '{
 	 gsub(/%title%/, titlevar);
 	  gsub(/%artist%/, artistvar);
 	  gsub(/%album%/, albumvar);
@@ -910,82 +720,75 @@ pw_Print() {
 	  print;
 	}')
 	echo "$output_text"
-}
+end
 
 # CLI actions
-pw_CLICommand() {
+function pw_CLICommand
 	pw_Refresh
-	case $1 in
-		"help") pw_Help;;
+	switch $argv[1]
+    case help 
+      pw_Help
 
-		"pause" | "play" | "prev" | "previous" | "backward" | "stop" | "next" | "forward")
-			theinput3=$1
-			CLI=True
-			pw_UserSelection "$theinput3";;
+    case pause play prev previous backward stop next forward
+			set theinput3 $argv[1]
+			set CLI True
+			pw_UserSelection "$theinput3"
 
-		"menu") pw_MenuOptions open &;;
+    case menu
+      pw_MenuOptions open
 
-		"daemon") pw_PeriwinkleDaemon;;
+    case daemon 
+      echo "Periwinkle's Daemon mode is unavailable on Fish."
+      exit 1
 
-		"clear" | "update" | "shuffle" | "playlist")
-			if [ -z "$2" ]; then
-				pw_MPDCommandButFiltered "$*";
+    case clear update shuffle playlist
+			if [ -z "$argv[2]" ]
+				pw_MPDCommandButFiltered "$argv";
 			else
 				pw_Error ManyArguments
-			fi;;
+      end
 
-		"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "consume" | "repeat" | "delete" | "direct")
+    case add rm find save setvol list crossfade single random consume repeat delete direct
 			# This is a temporary fix to make the strings parse correctly.
 			# Ideally I'd want to edit "pw_MPDCommandButFiltered" directly to make it correct
-			if [ -n "$2" ]; then
-				CORRECT_INPUT2="$2"
-			fi
 
-			if [ -n "$3" ]; then
-				CORRECT_INPUT3="$3"
-			fi
-
-			if [ -n "$4" ]; then
-				CORRECT_INPUT4="$4"
-			fi
-
-			if [ -n "$5" ]; then
-				CORRECT_INPUT5="$5"
-			fi
-
-			if [ "$1" = "direct" ]; then
+			if [ "$argv[1]" = "direct" ]
 				pw_MPDCommandButFiltered "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
-			elif [ -n "$2" ]; then
-				pw_MPDCommandButFiltered "$1" "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
+      else if [ -n "$argv[2]" ]
+				pw_MPDCommandButFiltered "$argv[1]" "$argv[2]" "$argv[3]" "$argv[4]" "$argv[5]"
 			else
 				pw_Error FewArguments
-			fi;;
-		"seek")
-			if [ -n "$3" ]; then
+      end
+
+    case seek
+			if [ -n "$argv[3]" ]
 				pw_Error ManyArguments
-			fi
+      end
 
-			if [ -z "$songid" ]; then
-				pw_Error PlaylistClear "$1"
-			fi
+			if [ -z "$songid" ]
+				pw_Error PlaylistClear "$argv[1]"
+      end
 
-			if [ -n "$2" ]; then
-				CORRECT_INPUT2=$2
-				MINIMUMVAL=-1 MAXIMUMVAL=2147483648 pw_CheckNumber "$CORRECT_INPUT2" inRange
-				pw_MPDCommandButFiltered seek "$songid" "$CORRECT_INPUT2"
+			if [ -n "$argv[2]" ]
+        pw_CheckNumber inRange "$argv[2]" -1 2147483648
+				pw_MPDCommandButFiltered seek "$songid" "$argv[2]"
 			else
 				pw_Error FewArguments
-			fi;;
+      end
 
-		"format" | "print")
-			FORMATCLI=TRUE
-			shift
-			pw_Print "$@";;
+    case format print
+			set -g FORMATCLI "TRUE"
+      set -l new_argv
+      for arg in $argv[2..-1]
+        set new_argv $new_argv $arg
+      end
+      set argv $new_argv
+			pw_Print "$argv"
 
-		"clearpreviews")
-			rm "$Directory_AlbumCover"/*.png;;
+    case clearpreviews
+			rm "$Directory_AlbumCover"/*.png
 
-		"statsfornerds")
+    case statsfornerds
 			pw_HashSongName
 			pw_SetAlbumCover
 			echo 'Output: '
@@ -1001,94 +804,94 @@ pw_CLICommand() {
 			echo 'Date: '"$date"
 			echo
 			echo 'Hash: '"$UseHash"
-			echo "DMENU SETTINGS: " "$Bar_Position" "$DMENU_TITLE" "$Bar_Font" "$Color_Background" "$Color_Foreground" "$Color_SelectedBackground" "$Color_SelectedForeground";;
+			echo "DMENU SETTINGS: " "$Bar_Position" "$DMENU_TITLE" "$Bar_Font" "$Color_Background" "$Color_Foreground" "$Color_SelectedBackground" "$Color_SelectedForeground"
 
-		"console") nc "$MPD_Host" "$MPD_Port";;
+    case console 
+      nc "$MPD_Host" "$MPD_Port"
 		
-		"info") pw_AboutProgram;;
+    case info 
+      pw_AboutProgram
 		
-		"") pw_SpawnNotification action &;; 
+    case ""
+      begin
+        pw_SpawnNotification action
+      end
 		
-		*) input="$1" pw_Error UnknownCommand;;
-	esac
-}
-
-pw_DependencyList="nc awk notify-send dmenu ffmpeg"
-
-pw_DependencyListLen=${#pw_DependencyList}
-
-pw_DependencyListLen=$((pw_DependencyListLen + 2))
-
-# Initialize index
-pw_PositionedIn=1
-
-# Iterate over each character in the string to find the missing dependencies.
-while [ "$pw_PositionedIn" -lt "$pw_DependencyListLen" ]; do
-	pw_CurrentChar="$(printf "%s\n" "$pw_DependencyList\n" | cut -c $pw_PositionedIn)"
-    pw_PositionedIn=$((pw_PositionedIn + 1))
-
-	if [ "$pw_CurrentChar" = " " ] || [ $pw_PositionedIn -eq $pw_DependencyListLen ]; then
-		for cmd in $pw_AuxiliarAppend; do
-    		if ! command -v "$cmd" > /dev/null 2>&1; then
-				pw_MissingDependency
-    		fi
-		done
-		pw_AuxiliarAppend=""
-	else
-		pw_AuxiliarAppend="$pw_AuxiliarAppend""$pw_CurrentChar"
-	fi
-
-done
+    case '*' 
+      pw_Error UnknownCommand "$argv[1]"
+  end
+end
 
 pw_FillInTheBlanks
 
-case $Notify_FillEmptyTags in
-	"true")
-	FORMATCLI="TRUE"
-	;;
-esac
+set pw_DependencyList "nc awk notify-send dmenu ffmpeg"
 
-case $Notify_ExtraButtons in
-	"true")
-	NEWNOTIFBEHAVIOR=0;;
-	"false")
-	NEWNOTIFBEHAVIOR=1
-	;;
-esac	
+set pw_DependencyListLen (string length $pw_DependencyList)
+
+set pw_DependencyListLen (math $pw_DependencyListLen + 2)
+
+# Initialize index
+set pw_PositionedIn 1
+
+# Iterate over each character in the string to find the missing dependencies.
+while [ "$pw_PositionedIn" -lt "$pw_DependencyListLen" ]
+	set pw_CurrentChar "$(printf "%s\n" "$pw_DependencyList\n" | cut -c $pw_PositionedIn)"
+    set pw_PositionedIn (math $pw_PositionedIn + 1)
+
+	if [ "$pw_CurrentChar" = " " ] || [ $pw_PositionedIn -eq $pw_DependencyListLen ]
+		for cmd in $pw_AuxiliarAppend
+    		if ! command -v "$cmd" > /dev/null 2>&1
+				pw_MissingDependency
+        end
+    end
+		set pw_AuxiliarAppend ""
+	else
+		set pw_AuxiliarAppend "$pw_AuxiliarAppend""$pw_CurrentChar"
+  end
+
+end
+
+switch $Notify_FillEmptyTags
+  case true
+	  set FORMATCLI "TRUE"
+end
+
+switch $Notify_ExtraButtons
+  case true
+	  set NEWNOTIFBEHAVIOR 0
+  case false
+	  set NEWNOTIFBEHAVIOR 1
+end
 
 # Checks if MPD_Port is a valid number that IS an integer and NOT a string
-MINIMUMVAL=1 MAXIMUMVAL=65535 pw_CheckNumber "$MPD_Port" inRange
-pw_CheckNumber "$Notify_Timeout" isPositive
+pw_CheckNumber inRange $MPD_Port 1 65535
+pw_CheckNumber isPositive "$Notify_Timeout"
 
 # Checks if Notify_Timeout is a valid number that is NOT a string, but independently if it's an integer
 
-if [ ! -d "$Directory_AlbumCover" ]; then
+if [ ! -d "$Directory_AlbumCover" ]
 	mkdir -v "$Directory_AlbumCover"
-fi
+end
 
 # The config checking routines were made by ChatGPT. Thank you so much.
 
 # Convert the seconds to milliseconds in the Notify_Timeout variable
-Notify_Timeout=$(awk "BEGIN { printf(\"%.0f\", $Notify_Timeout * 1000) }" | awk '{sub(/%$/,"")}1')
+set Notify_Timeout "$(awk "BEGIN { printf(\"%.0f\", $Notify_Timeout * 1000) }" | awk '{sub(/%$/,"")}1')"
 
 pw_ReloadMetadata All
 
 pw_Refresh
 
 # Fetch some stuff, better not change this
-mpc_file="$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
-filename=$Directory_MusicFolder/${mpc_file##*:}
+set mpc_file "$(echo "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')"
+set filename "$Directory_MusicFolder"'/'"(string replace "*:" "" -- $mpc_file)"
 
-case $Bar_Position in
-	"bottom" | "Bottom")
-		Bar_Position="-b"
-		;;
-	"top" | "Top")
-		Bar_Position="-f"
-		;;
-	*)
-	Bar_Position="-b"
-		;;
-esac
+switch $Bar_Position
+  case top Top
+    set Bar_Position "-f"
+  case '*'
+	  set Bar_Position "-b"
+end
 
-pw_CLICommand "$@"
+trap exit INT
+pw_CLICommand $argv

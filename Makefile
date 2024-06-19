@@ -29,10 +29,10 @@ install:
 		cp periwinkle.service "$(HOMEDIR)/.config/systemd/user"; \
 	fi	
 
-	$(shell sudo bash -c "cp -f periwinkle /usr/bin/periwinkle")
+	$(shell sudo sh -c "cp -f periwinkle /usr/bin/periwinkle")
 
 uninstall:
 	rm $(HOMEDIR)/.config/systemd/user/periwinkle.service
-	$(shell sudo bash -c "rm -f /usr/bin/periwinkle")
+	$(shell sudo sh -c "rm -f /usr/bin/periwinkle")
 
 .PHONY: all
