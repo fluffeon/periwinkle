@@ -753,7 +753,7 @@ function pw_CLICommand
 			# Ideally I'd want to edit "pw_MPDCommandButFiltered" directly to make it correct
 
 			if [ "$argv[1]" = "direct" ]
-				pw_MPDCommandButFiltered "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
+				pw_MPDCommandButFiltered "$argv[2]" "$argv[3]" "$argv[4]" "$argv[5]"
       else if [ -n "$argv[2]" ]
 				pw_MPDCommandButFiltered "$argv[1]" "$argv[2]" "$argv[3]" "$argv[4]" "$argv[5]"
 			else
