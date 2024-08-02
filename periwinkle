@@ -372,25 +372,25 @@ pw_SpawnNotification() {
 	# $4 = Extra Option (optional)
 
 	if [ "$(uname)" = "Darwin" ]; then
-		NotificationActionSelected=$(alerter -title "c $1" -message "$2" -contentImage "$3" -group 27072 -timeout "$(($Notify_Timeout / 1000))")
+		NotificationActionSelected="$(alerter -title "$1" -message "$2" -contentImage "$3" -group 27072 -timeout "$(($Notify_Timeout / 1000))")"
 	else
-		NotificationActionSelected=$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2" -i "$3" --action open=Show "$4" "$NOTIFICATIONACTION")
+		NotificationActionSelected="$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2" -i "$3" --action open=Show "$4" "$NOTIFICATIONACTION")"
 	fi
 
-	if [ -z "$NotificationActionSelected" ]; then
-				return 0
-			elif [ -s /tmp/pw_daemonmode ]; then
-				if [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
-					pw_UserSelection "$NotificationActionSelected"
-					return 0
-				fi
-				pw_MenuOptions daemon
-			elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
-				pw_UserSelection "$OPPSTATUS"
-				return 0
-			else
-				pw_MenuOptions "$NotificationActionSelected"
-			fi
+	if [ -z "$NotificationActionSelected" ] || [ "$NotificationActionSelected" = "@TIMEOUT" ] || [ "$NotificationActionSelected" = "@CLOSED" ]; then
+		return 0
+	elif [ -s /tmp/pw_daemonmode ]; then
+		if [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
+			pw_UserSelection "$NotificationActionSelected"
+			return 0
+		fi
+			pw_MenuOptions daemon
+		elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
+			pw_UserSelection "$OPPSTATUS"
+			return 0
+		else
+			pw_MenuOptions "$NotificationActionSelected"
+		fi
 }
 
 pw_HashSongName() {
@@ -927,23 +927,25 @@ pw_PeriwinkleDaemon() {
 	pw_Refresh
 	trap pw_QuitDaemon INT
 	trap pw_QuitDaemon TERM
+	currentsong_daemon="$title - $artist - $album $date"
+	previoussong_daemon="$currentsong_daemon"
+	currentstate2="$state"
+	previousstate2="$currentstate2"
 
 	while true; do
+
+		if [ "$currentsong_daemon" != "$previoussong_daemon" ] || [ "$currentstate2" != "$previousstate2" ]; then
+			echo 'State changed to '"$currentstate2"
+			echo 'Song changed to: '"'$title'"' by '"$artist"
+			pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" "$previewname" &
+			previoussong_daemon="$currentsong_daemon"
+			previousstate2="$currentstate2"
+		fi
+
+		sleep 0.5
 		pw_Refresh
 		currentsong_daemon="$title - $artist - $album $date"
 		currentstate2="$state"
-		if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
-			pw_Refresh
-			echo 'Song changed to: '"'$title'"' by '"$artist"
-			pw_SpawnNotificationLegacy daemon &
-			previoussong_daemon="$currentsong_daemon"
-    	elif [ "$currentstate2" != "$previousstate2" ]; then
-			pw_Refresh
-			echo 'State changed to '"$currentstate2"
-			pw_SpawnNotificationLegacy daemon &
-			previousstate2="$currentstate2"
-		fi
-		sleep 0,5
 	done
 }
 
