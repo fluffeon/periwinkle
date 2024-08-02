@@ -4,6 +4,22 @@
 Periwinkle is a fully-fledged MPD client that uses netcat to communicate with the MPD server directly, and libnotify + dmenu to control it, although you can also control Periwinkle through the CLI. For a shell script, I'd say it's surprisingly fast.
 It can also be used as a NCMPCPP notify-info or as a standalone daemon to notify when a song changes without a client open.
 
+# Dependencies
+
+### Linux/BSD
+- Netcat (either GNU Netcat or OpenBSD Netcat)
+- notify-send
+- awk (should come included in your core library of choice)
+- ffmpeg
+- dmenu
+
+### macOS
+- Netcat
+- Alerter - https://github.com/vjeantet/alerter
+- awk
+- ffmpeg
+- dmenu-mac - https://github.com/oNaiPs/dmenu-mac
+
 # Config
 Edit the `periwinkle` script directly to make changes. There are several to choose from inside of it.
 

@@ -38,7 +38,7 @@
 #Directory_MusicFolder=$HOME/Music
 
 # -----
-# DMENU
+# APPEARANCE
 # -----
 #
 # In dwm, usually the following equivalents for dmenu coloring are:
@@ -58,6 +58,8 @@
 # By default it's at the bottom
 
 #Bar_Position=bottom
+
+UseNerdFont=false
 
 # ----------------
 # PREVIEW SETTINGS
@@ -313,6 +315,14 @@ pw_FillInTheBlanks() {
 	if [ -z "$Directory_MusicFolder" ]; then
 		Directory_MusicFolder=$HOME/Music	
 	fi
+
+	if [ -z "$UseNerdFont" ]; then
+		if [ "$(uname)" = "Darwin" ]; then
+			UseNerdFont=false
+		else
+			UseNerdFont=true
+		fi
+	fi
 }
 
 # Function to check if a value is a number
@@ -356,45 +366,31 @@ pw_CheckNumber() {
 }
 
 pw_SpawnNotification() {
-	if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]; then
-		NOTIFICATIONACTION=""
-	elif [ "$NEWNOTIFBEHAVIOR" = 0 ]; then
-		pw_Refresh
-		NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
+	# $1 = Title
+	# $2 = Subtitle
+	# $3 = Icon
+	# $4 = Extra Option (optional)
+
+	if [ "$(uname)" = "Darwin" ]; then
+		NotificationActionSelected=$(alerter -title "c $1" -message "$2" -contentImage "$3" -group 27072 -timeout "$(($Notify_Timeout / 1000))")
+	else
+		NotificationActionSelected=$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2" -i "$3" --action open=Show "$4" "$NOTIFICATIONACTION")
 	fi
 
-	if [ -z "$mpc_file" ]; then
-		Notify_TitlePlay="$Notify_TitleStop"
-		Notify_SubtitlePlay=""
-	fi
-	
-	case $1 in
-		"action" | "daemon")
-			if [ -z "$NOTIFICATIONACTION" ]; then					
-				CONDITIONOPEN=$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" -i "$previewname" --action open=Show)
-			else
-				CONDITIONOPEN=$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" -i "$previewname" --action open=Show "$NOTIFICATIONACTION")
-			fi
-
-			if [ -z "$CONDITIONOPEN" ]; then
+	if [ -z "$NotificationActionSelected" ]; then
 				return 0
 			elif [ -s /tmp/pw_daemonmode ]; then
-				if [ "$CONDITIONOPEN" = "$OPPSTATUS" ] || [ "$CONDITIONOPEN" = "forward" ]; then
-					pw_UserSelection "$CONDITIONOPEN"
+				if [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
+					pw_UserSelection "$NotificationActionSelected"
 					return 0
 				fi
 				pw_MenuOptions daemon
-			elif [ "$CONDITIONOPEN" = "$OPPSTATUS" ] || [ "$CONDITIONOPEN" = "forward" ]; then
+			elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
 				pw_UserSelection "$OPPSTATUS"
 				return 0
 			else
-				pw_MenuOptions "$CONDITIONOPEN"
+				pw_MenuOptions "$NotificationActionSelected"
 			fi
-			;;
-
-		*) 
-			notify-send -t '"'"$Notify_Timeout"'"' -u low -r 27072 '"'"$(pw_Print "$Notify_TitlePlay")"'"' '"'"$(pw_Print '"'"$Notify_SubtitlePlay")"'"' -i '"'"$previewname"'"';;
-	esac
 }
 
 pw_HashSongName() {
@@ -418,7 +414,12 @@ pw_CleanOutput() {
 }
 
 # Function to send commands to MPD which is netcat-agnostic
-pw_MPDCommand() { printf "%s\n" "$1" "close" | nc "$MPD_Host" "$MPD_Port"; }
+pw_MPDCommand() { 
+	(
+	printf "%s\n" "$1" "close";
+	sleep 0.01
+	) | nc "$MPD_Host" "$MPD_Port"; 
+}
 
 pw_ReloadMetadata() {
 
@@ -457,18 +458,34 @@ pw_ReloadMetadata() {
 
 		"State")
 			state="$(echo "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"
-			if [ "$state" = "stop" ]; then
-				NOTIFYSEND_STATUS=""
-				OPPSTATUS=""
-				OPPSTATUS2=""
-			elif [ "$state" = "pause" ]; then
-				NOTIFYSEND_STATUS=""
-				OPPSTATUS=""
-				OPPSTATUS2=""
-			elif [ "$state" = "play" ]; then
-				NOTIFYSEND_STATUS=""
-				OPPSTATUS=""
-				OPPSTATUS2=""
+			if [ "$UseNerdFont" = "true" ]; then
+				if [ "$state" = "stop" ]; then
+					NOTIFYSEND_STATUS=""
+					OPPSTATUS=""
+					OPPSTATUS2=""
+				elif [ "$state" = "pause" ]; then
+					NOTIFYSEND_STATUS=""
+					OPPSTATUS=""
+					OPPSTATUS2=""
+				elif [ "$state" = "play" ]; then
+					NOTIFYSEND_STATUS=""
+					OPPSTATUS=""
+					OPPSTATUS2=""
+				fi
+			else
+				if [ "$state" = "stop" ]; then
+					NOTIFYSEND_STATUS="[S]"
+					OPPSTATUS="Play"
+					OPPSTATUS2=""
+				elif [ "$state" = "pause" ]; then
+					NOTIFYSEND_STATUS="[PS]"
+					OPPSTATUS="Play"
+					OPPSTATUS2="Stop"
+				elif [ "$state" = "play" ]; then
+					NOTIFYSEND_STATUS="[PL]"
+					OPPSTATUS="Pause"
+					OPPSTATUS2="Stop"
+				fi
 			fi;;
 
 		"RefreshVariables")
@@ -613,7 +630,11 @@ pw_SetAlbumCover() {
 pw_SpawnMenu() {
 	# echo "$Bar_Position" "$DMENU_TITLE" "$Bar_Font" "$Color_Background" "$Color_Foreground" "$Color_SelectedBackground" "$Color_SelectedForeground"
 
-	dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground"
+	if [ "$(uname)" = "Darwin" ]; then
+		dmenu-mac -p "$DMENU_TITLE"
+	else
+		dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground"
+	fi
 	return 0
 }
 
@@ -634,47 +655,61 @@ pw_MPDCommandButFiltered() {
 
 pw_UserSelection() { 
 
+	if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]; then
+		NOTIFICATIONACTION=""
+	elif [ "$NEWNOTIFBEHAVIOR" = 0 ]; then
+		pw_Refresh
+		NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
+	fi
+
+	if [ -z "$mpc_file" ]; then
+		Notify_TitlePlay="$Notify_TitleStop"
+		Notify_SubtitlePlay=""
+	fi
+
 	# Execute the desired action
 	case $1 in
-    	"" | "prev" | "previous" | "backward")
+    	"" | "prev" | "previous" | "Previous" | "backward")
 			pw_MPDCommand previous > /dev/null 2>&1
 			if [ -s /tmp/pw_daemonmode ]; then
 				return 0
 			fi
 
-			pw_SpawnNotification action &;;
+			pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" "$previewname" &
+			#pw_SpawnNotificationLegacy action &
+			;;
 
-    	"" | "pause")
+    	"" | "Pause" | "pause")
 			pw_MPDCommand pause > /dev/null 2>&1	
 			if [ -s /tmp/pw_daemonmode ]; then
 				return 0
 			fi
 
-			pw_SpawnNotification action &;;
+			pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" "$previewname" &;;
 
-    	"" | "play")
+    	"" | "Play" | "play")
 			pw_MPDCommand play > /dev/null 2>&1
 			if [ -s /tmp/pw_daemonmode ]; then
 				return 0
 			fi
 
-			pw_SpawnNotification action &;;
+			pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" "$previewname" &;;
 		
-    	"" | "stop")
+    	"" | "Stop" | "stop")
 			pw_MPDCommand stop > /dev/null 2>&1
 			if [ -s /tmp/pw_daemonmode ]; then
 				return 0
 			fi
 
-			pw_SpawnNotification action &;;
+			pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" "$previewname" &;;
 
-    	"" | "next" | "forward")
+    	"" | "Next" | "next" | "Forward" | "forward")
 			pw_MPDCommand next > /dev/null 2>&1
 			if [ -s /tmp/pw_daemonmode ]; then
 				return 0
 			fi
 
-			pw_SpawnNotification action &;;
+			pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" "$previewname" &;;
 
 		"seek" | "volume" | "setvol" | "vol" | "crossfade")
 			SELECTED=$1
@@ -742,6 +777,7 @@ pw_MenuOptions() {
 
 		# Different commands
 		"integer")
+		
 			case $SELECTED in
 				"setvol" | "Setvol" | "vol" | "Vol" | "volume")
 					DMENU_TITLE='Set volume (0-100)'
@@ -755,11 +791,30 @@ pw_MenuOptions() {
 			esac
 
 			if [ -z "$INTEGER" ]; then
-				prompt=$(pw_SpawnMenu)
-				if [ -z "$prompt" ]; then
-					pw_CLICommand menu
-					return 0
+				if [ "$(uname)" = "Darwin" ]; then
+					Darwin_InsertBoxDialog=$(cat <<EOF
+set userInput to display dialog "$DMENU_TITLE" default answer "" buttons {"Cancel", "OK"} default button "OK"
+
+if button returned of userInput is "Cancel" then
+    return "Cancel"
+else
+	set userInputText to text returned of userInput
+	try
+    	set userInputNumber to userInputText as number
+    	set result to userInputNumber
+	on error
+    	set result to "" as text
+	end try
+end if
+
+return result
+EOF
+		)
+					prompt=$(osascript -e "$Darwin_InsertBoxDialog")
+				else
+					prompt=$(printf "Cancel" | pw_SpawnMenu)
 				fi
+
 				pw_CLICommand "$SELECTED" "$prompt"
 				return 0
 
@@ -771,16 +826,16 @@ pw_MenuOptions() {
 		"boolean")
 			case $CALLED_CMD in
 				"single")
-					mpd="0:1:oneshot";;
+					mpd="0:1:oneshot:Cancel";;
 				*)
-					mpd="0:1";;
+					mpd="0:1:Cancel";;
 			esac
 
 			if [ -z "$2" ]; then
 				DMENU_TITLE="Set boolean for $CALLED_CMD"
 				prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
 
-				if [ -z "$prompt" ]; then
+				if [ -z "$prompt" ] || [ "$prompt" = "[Cancel]" ] || [ "$prompt" = "Cancel" ]; then
 					pw_CLICommand menu
 					return 0
 				fi
@@ -820,14 +875,23 @@ pw_MenuOptions() {
 			fi;;
 
 		# No arguments
-		"open" | "Open")
+		"open" | "Open" | "@ACTIONCLICKED")
 
 		# Show dmenu with the controls
+			
+			if [ "$UseNerdFont" = true ]; then
+				PreviousIcon=""
+				ForwardIcon=""
+			else
+				PreviousIcon="Previous"
+				ForwardIcon="Next"
+			fi
+
 			if [ -z "$OPPSTATUS2" ]; then
-				mpd=':'"$OPPSTATUS"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
+				mpd="$PreviousIcon"':'"$OPPSTATUS"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
 
 			else
-				mpd=':'"$OPPSTATUS:$OPPSTATUS2"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
+				mpd="$PreviousIcon"':'"$OPPSTATUS:$OPPSTATUS2"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
 			fi
 
 			if [ -z "$mpc_file" ]; then
@@ -871,12 +935,12 @@ pw_PeriwinkleDaemon() {
 		if [ "$currentsong_daemon" != "$previoussong_daemon" ]; then
 			pw_Refresh
 			echo 'Song changed to: '"'$title'"' by '"$artist"
-			pw_SpawnNotification daemon &
+			pw_SpawnNotificationLegacy daemon &
 			previoussong_daemon="$currentsong_daemon"
     	elif [ "$currentstate2" != "$previousstate2" ]; then
 			pw_Refresh
 			echo 'State changed to '"$currentstate2"
-			pw_SpawnNotification daemon &
+			pw_SpawnNotificationLegacy daemon &
 			previousstate2="$currentstate2"
 		fi
 		sleep 0,5
@@ -919,9 +983,8 @@ pw_CLICommand() {
 		"help") pw_Help;;
 
 		"pause" | "play" | "prev" | "previous" | "backward" | "stop" | "next" | "forward")
-			theinput3=$1
 			CLI=True
-			pw_UserSelection "$theinput3";;
+			pw_UserSelection "$1";;
 
 		"menu") pw_MenuOptions open &;;
 
@@ -935,28 +998,10 @@ pw_CLICommand() {
 			fi;;
 
 		"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "consume" | "repeat" | "delete" | "direct")
-			# This is a temporary fix to make the strings parse correctly.
-			# Ideally I'd want to edit "pw_MPDCommandButFiltered" directly to make it correct
-			if [ -n "$2" ]; then
-				CORRECT_INPUT2="$2"
-			fi
-
-			if [ -n "$3" ]; then
-				CORRECT_INPUT3="$3"
-			fi
-
-			if [ -n "$4" ]; then
-				CORRECT_INPUT4="$4"
-			fi
-
-			if [ -n "$5" ]; then
-				CORRECT_INPUT5="$5"
-			fi
-
 			if [ "$1" = "direct" ]; then
-				pw_MPDCommandButFiltered "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
+				pw_MPDCommandButFiltered "$2" "$3" "$4" "$5"
 			elif [ -n "$2" ]; then
-				pw_MPDCommandButFiltered "$1" "$CORRECT_INPUT2" "$CORRECT_INPUT3" "$CORRECT_INPUT4" "$CORRECT_INPUT5"
+				pw_MPDCommandButFiltered "$1" "$2" "$3" "$4" "$5"
 			else
 				pw_Error FewArguments
 			fi;;
@@ -970,9 +1015,8 @@ pw_CLICommand() {
 			fi
 
 			if [ -n "$2" ]; then
-				CORRECT_INPUT2=$2
-				MINIMUMVAL=-1 MAXIMUMVAL=2147483648 pw_CheckNumber "$CORRECT_INPUT2" inRange
-				pw_MPDCommandButFiltered seek "$songid" "$CORRECT_INPUT2"
+				MINIMUMVAL=-1 MAXIMUMVAL=2147483648 pw_CheckNumber "$2" inRange
+				pw_MPDCommandButFiltered seek "$songid" "$2"
 			else
 				pw_Error FewArguments
 			fi;;
@@ -1007,13 +1051,33 @@ pw_CLICommand() {
 		
 		"info") pw_AboutProgram;;
 		
-		"") pw_SpawnNotification action &;; 
+		"")
+		if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]; then
+			NOTIFICATIONACTION=""
+		elif [ "$NEWNOTIFBEHAVIOR" = 0 ]; then
+			pw_Refresh
+			NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
+		fi
+
+		if [ -z "$mpc_file" ]; then
+			Notify_TitlePlay="$Notify_TitleStop"
+			Notify_SubtitlePlay=""
+		fi 
+		
+		pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_SubtitlePlay")" "$previewname" &;; 
 		
 		*) input="$1" pw_Error UnknownCommand;;
 	esac
 }
 
-pw_DependencyList="nc awk notify-send dmenu ffmpeg"
+if [ "$(uname)" = "Darwin" ]; then
+	alias sha256sum="shasum -a 256"
+	alias sha512sum="shasum -a 512"
+	alias md5sum="md5"
+	pw_DependencyList="nc awk alerter dmenu-mac ffmpeg"
+else
+	pw_DependencyList="nc awk notify-send dmenu ffmpeg"
+fi
 
 pw_DependencyListLen=${#pw_DependencyList}
 
