@@ -402,9 +402,9 @@ pw_SpawnNotification() {
 		NotificationActionSelected="$(alerter -title "$1" -subtitle "$2" -message "$3" -contentImage "$4" -group 27072 -timeout "$(($Notify_Timeout / 1000))")"
 	else
 		if [ -n "$5" ] || [ "$5" = "" ]; then
-			NotificationActionSelected="$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show $5)"
+			NotificationActionSelected="$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show $5)"
 		else
-			NotificationActionSelected="$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show)"
+			NotificationActionSelected="$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show)"
 		fi
 	fi
 
@@ -957,18 +957,22 @@ pw_PeriwinkleDaemon() {
 				pw_Counter=$(($pw_Counter + 1))
 				sleep 0.03
 			done
+		fi
 
-			if [ -z "$mpc_file" ]; then
-				pw_Refresh
-				Notify_TitlePlay="$Notify_TitleStop"
-				Notify_Line1Play=""
+		if [ -z "$mpc_file" ]; then
+			Notify_TitlePlay="$Notify_TitleStop"
+			Notify_Line1Play=""
+			if [ "$(uname)" = "Darwin" ]; then
 				Notify_Line2Play="The playlist is currently stopped."
 			else
-				Notify_TitlePlay=$Notify_TitlePlaySave
-				Notify_Line1Play=$Notify_Line1PlaySave
-				Notify_Line2Play=$Notify_Line2PlaySave
-			fi 
-		fi
+				Notify_Line2Play=""
+			fi
+		else
+			Notify_TitlePlay=$Notify_TitlePlaySave
+			Notify_Line1Play=$Notify_Line1PlaySave
+			Notify_Line2Play=$Notify_Line2PlaySave
+		fi 
+		
 		mpc_file="$(printf "%s" "$stats" | awk -F ': ' '/^file:/ {print $2}' | awk '{$1=$1};1')" 
 		currentsong_daemon="$title - $artist - $album $date $mpc_file"
 		currentstate2="$state"
