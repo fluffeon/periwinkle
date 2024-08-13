@@ -82,7 +82,7 @@
 
 # Show extra control buttons in the popup
 
-#Notify_ExtraButtons=false
+Notify_ExtraButtons=true
 
 # Format the notification
 # Set the appearance of the notification to your liking.
@@ -275,7 +275,7 @@ pw_FillInTheBlanks() {
 		if [ "$(uname)" = "Darwin" ]; then
 			Notify_Line1Play='%title%'
 		else
-			Notify_Line1Play='by %artist'
+			Notify_Line1Play='by %artist%'
 		fi
 	fi
 
@@ -283,7 +283,7 @@ pw_FillInTheBlanks() {
 		if [ "$(uname)" = "Darwin" ]; then
 			Notify_Line2Play="%artist%""'"'s "%album%" %datep%'
 		else
-			Notify_Line2Play="from %album% %datep%"
+			Notify_Line2Play='from "%album%" %datep%'
 		fi
 	fi
 
@@ -401,23 +401,32 @@ pw_SpawnNotification() {
 	if [ "$(uname)" = "Darwin" ]; then
 		NotificationActionSelected="$(alerter -title "$1" -subtitle "$2" -message "$3" -contentImage "$4" -group 27072 -timeout "$(($Notify_Timeout / 1000))")"
 	else
-		NotificationActionSelected="$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show "$5" "$NOTIFICATIONACTION")"
+		if [ -n "$5" ] || [ "$5" = "" ]; then
+			NotificationActionSelected="$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show $5)"
+		else
+			NotificationActionSelected="$(notify-send -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show)"
+		fi
 	fi
 
 	if [ -z "$NotificationActionSelected" ] || [ "$NotificationActionSelected" = "@TIMEOUT" ] || [ "$NotificationActionSelected" = "@CLOSED" ]; then
 		return 0
+
 	elif [ -s /tmp/pw_daemonmode ]; then
+
 		if [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
 			pw_UserSelection "$NotificationActionSelected"
 			return 0
 		fi
-			pw_MenuOptions daemon
-		elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
-			pw_UserSelection "$OPPSTATUS"
-			return 0
-		else
-			pw_MenuOptions "$NotificationActionSelected"
-		fi
+		pw_MenuOptions daemon
+
+	elif [ "$NotificationActionSelected" = "$OPPSTATUS" ] || [ "$NotificationActionSelected" = "forward" ]; then
+		pw_UserSelection "$NotificationActionSelected"
+		return 0
+
+	else
+		pw_MenuOptions "$NotificationActionSelected"
+	fi
+		
 }
 
 # Clean the stinky output
@@ -617,13 +626,6 @@ pw_MPDCommandButFiltered() {
 
 pw_UserSelection() { 
 
-	if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]; then
-		NOTIFICATIONACTION=""
-	elif [ "$NEWNOTIFBEHAVIOR" = 0 ]; then
-		pw_Refresh
-		NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
-	fi
-
 	if [ -z "$mpc_file" ]; then
 		Notify_TitlePlay="$Notify_TitleStop"
 		Notify_Line1Play=""
@@ -702,11 +704,20 @@ pw_UserSelection() {
 
 	esac
 
+	pw_Refresh
 	pw_SpawnNotification_Shortcut
 }
 
 pw_SpawnNotification_Shortcut() {
-	pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_Line1Play")" "$(pw_Print "$Notify_Line2Play")" "$previewname" &
+	pw_Refresh
+
+	if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]; then
+		NOTIFICATIONACTION=""
+	elif [ "$NEWNOTIFBEHAVIOR" = 0 ]; then
+		NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
+	fi
+
+	pw_SpawnNotification "$(pw_Print "$Notify_TitlePlay")" "$(pw_Print "$Notify_Line1Play")" "$(pw_Print "$Notify_Line2Play")" "$previewname" "$NOTIFICATIONACTION" &
 	return
 }
 
@@ -1066,12 +1077,6 @@ pw_CLICommand() {
 		"info") pw_AboutProgram;;
 		
 		"")
-		if [ -z "$OPPSTATUS" ] && [ "$NEWNOTIFBEHAVIOR" = 1 ]; then
-			NOTIFICATIONACTION=""
-		elif [ "$NEWNOTIFBEHAVIOR" = 0 ]; then
-			pw_Refresh
-			NOTIFICATIONACTION="--action ""$OPPSTATUS"="$OPPSTATUS"" --action forward="	
-		fi
 
 		if [ -z "$mpc_file" ]; then
 			Notify_TitlePlay="$Notify_TitleStop"
