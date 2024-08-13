@@ -82,7 +82,7 @@
 
 # Show extra control buttons in the popup
 
-Notify_ExtraButtons=true
+#Notify_ExtraButtons=true
 
 # Format the notification
 # Set the appearance of the notification to your liking.
