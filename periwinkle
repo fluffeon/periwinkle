@@ -209,23 +209,23 @@ pw_Error() {
 			printf "[%s - ERR] '%s' is not a valid integer -w-\n" "$(date)" "$2";;
 
 		"InvalidNumber")
-			printf "[%s - ERR] '%s' is not a valid number -w-" "$(date)" "$2";;
+			printf "[%s - ERR] '%s' is not a valid number -w-\n" "$(date)" "$2";;
 
 		"FewArguments")
-			printf "[%s - ERR] Not enough arguments... ;w;" "$(date)" "$2";;
+			printf "[%s - ERR] Not enough arguments... ;w;\n" "$(date)" "$2";;
 
 		"ManyArguments")
-			printf "[%s - ERR] T-That's too many arguments!! >w<" "$(date)" "$2";;
+			printf "[%s - ERR] T-That's too many arguments!! >w<\n" "$(date)" "$2";;
 
 		"WrongArguments")
-			printf "[%s - ERR] Wrong arguments for this command... :<" "$(date)" "$2";;
+			printf "[%s - ERR] Wrong arguments for this command... :<\n" "$(date)" "$2";;
 
 		"PlaylistClear")
-			printf "[%s - ERR] You can't %s if you have no songs in your queue or if the queue is stopped! >:3" "$(date)" "$2";;
+			printf "[%s - ERR] You can't %s if you have no songs in your queue or if the queue is stopped! >:3\n" "$(date)" "$2";;
 
 		"" | *)
-			printf "[%s - ERR] Something went wrong... o.O" "$(date)" "$2"
-			printf "[%s - ERR] If you see this error please open a issue report about it" "$(date)" "$2";;
+			printf "[%s - ERR] Something went wrong... o.O\n" "$(date)" "$2"
+			printf "[%s - ERR] If you see this error please open a issue report about it\n" "$(date)" "$2";;
 	esac
 	
 	return 1
@@ -236,13 +236,13 @@ pw_Error() {
 pw_MissingDependency() {
 	case $cmd in
 		"notify-send")
-			printf "[%s - ERR] 'notify-send' (libnotify) is required but not found. Please install it." "$(date)";;
+			printf "[%s - ERR] 'notify-send' (libnotify) is required but not found. Please install it.\n" "$(date)";;
 
 		"nc")
-			printf "[%s - ERR] Dependency missing: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it." "$(date)";;
+			printf "[%s - ERR] Dependency missing: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it.\n" "$(date)";;
 
 		*)
-			printf "[%s - ERR] Dependency missing: %s is required but not found. Please install it." "$(date)" "$cmd";;
+			printf "[%s - ERR] Dependency missing: %s is required but not found. Please install it.\n" "$(date)" "$cmd";;
 	esac
 
 	exit 1
@@ -342,7 +342,7 @@ pw_FillInTheBlanks() {
 			UseNerdFont=true
 		fi
 	elif [ "$UseNerdFont" = "true" ] && [ "$(uname)" = "Darwin" ]; then
-		printf "[%s - WARN] In macOS, Nerd Fonts are not supported on Periwinkle. Here be dragons." "$(date)"
+		printf "[%s - WARN] In macOS, Nerd Fonts are not supported on Periwinkle. Here be dragons.\n" "$(date)"
 	fi
 
 	Notify_TitlePlaySave=$Notify_TitlePlay
@@ -384,9 +384,9 @@ pw_CheckNumber() {
 			fi;;
 
 		*)
-			printf "[%s] %s" "$(date)" "$1"
-			printf "[%s] DEBUG INFO: Invalid arguments for this function" "$(date)"
-			printf "[%s] If you see this message, please open a issue about it." "$(date)"
+			printf "[%s - ERR] %s\n" "$(date)" "$1"
+			printf "[%s - ERR] DEBUG INFO: Invalid arguments for this function\n" "$(date)"
+			printf "[%s - ERR] If you see this message, please open a issue about it.\n" "$(date)"
 			pw_Error;;
 	esac
 }
