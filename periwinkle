@@ -61,7 +61,7 @@
 
 # Use Nerd Fonts for more eye candy
 # Warning: This option is not supported on macOS.
-#UseNerdFont=fonts
+#UseNerdFont=true
 
 # ----------------
 # PREVIEW SETTINGS
@@ -161,7 +161,7 @@ pw_Help() {
 		menu - Shows the dmenu prompt directly
 		info - Report version of Periwinkle, and licensing information
 		print <\%title% %artist% %album% %date% %datep% %songid% %state% %stateicon%> - Command that works like mpc's --format flag.
-		The point of the command above is to print current song info to stdout in a similar manner to "echo".
+		The point of the command above is to print current song info to stdout in a similar manner to echo.
 
 	Dmenu Exclusive Commands
 		cli <cmd> - Runs a CLI command within dmenu
