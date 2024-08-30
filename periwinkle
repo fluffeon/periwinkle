@@ -97,6 +97,10 @@
 
 #Notify_TitleStop="%stateicon% Stopped"
 
+# Set the title to appear when the Music Player Daemon is not running
+
+#Notify_TitleOffline="%stateicon% Offline"
+
 # Use formatting behavior from CLI, similar to previous versions of Periwinkle
 # So what this does is basically when a song has no title, it displays the filename instead. And if there's no artist, it shows "Unknown Artist"
 # By default, it's set on "false"
@@ -295,6 +299,14 @@ pw_FillInTheBlanks() {
 		fi
 	fi
 
+	if [ -z "$Notify_TitleOffline" ]; then
+		if [ "$(uname)" = "Darwin" ]; then
+			Notify_TitleOffline="Offline"
+		else
+			Notify_TitleOffline="%stateicon% Offline"
+		fi
+	fi
+
 	if [ -z "$Notify_FillEmptyTags" ]; then
 		Notify_FillEmptyTags=false	
 	fi
@@ -402,7 +414,7 @@ pw_SpawnNotification() {
 		NotificationActionSelected="$(alerter -title "$1" -subtitle "$2" -message "$3" -contentImage "$4" -group 27072 -timeout "$(($Notify_Timeout / 1000))")"
 	else
 		if [ -n "$5" ] || [ "$5" = "" ]; then
-			NotificationActionSelected="$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show $5)"
+			NotificationActionSelected="$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show "$5")"
 		else
 			NotificationActionSelected="$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show)"
 		fi
@@ -445,6 +457,15 @@ pw_MPDCommand() {
 pw_ReloadMetadata() {
 
 	case $1 in
+		"OnlineStatus")
+			pw_MPDCommand console > /dev/null 2>&1
+
+			if [ $? = 1 ]; then
+				pw_MPDIsOnline=false
+			else
+				pw_MPDIsOnline=true
+			fi;;
+
 		"Title")
 			title="$(printf "%s" "$stats" | awk -F ': ' '/^Title:/ { sub(/^Title: /, ""); print }')"
 			titlesave="$title"
@@ -479,33 +500,45 @@ pw_ReloadMetadata() {
 
 		"State")
 			state="$(printf "%s" "$stats2" | awk -F ': ' '/^state:/ { sub(/^state: /, ""); print }')"
-			if [ "$UseNerdFont" = "true" ]; then
-				if [ "$state" = "stop" ]; then
-					NOTIFYSEND_STATUS=""
-					OPPSTATUS=""
-					OPPSTATUS2=""
-				elif [ "$state" = "pause" ]; then
-					NOTIFYSEND_STATUS=""
-					OPPSTATUS=""
-					OPPSTATUS2=""
-				elif [ "$state" = "play" ]; then
-					NOTIFYSEND_STATUS=""
-					OPPSTATUS=""
-					OPPSTATUS2=""
+			if [ "$pw_MPDIsOnline" = "true" ]; then
+				if [ "$UseNerdFont" = "true" ]; then
+					if [ "$state" = "stop" ]; then
+						NOTIFYSEND_STATUS=""
+						OPPSTATUS=""
+						OPPSTATUS2=""
+					elif [ "$state" = "pause" ]; then
+						NOTIFYSEND_STATUS=""
+						OPPSTATUS=""
+						OPPSTATUS2=""
+					elif [ "$state" = "play" ]; then
+						NOTIFYSEND_STATUS=""
+						OPPSTATUS=""
+						OPPSTATUS2=""
+					fi
+				else
+					if [ "$state" = "stop" ]; then
+						NOTIFYSEND_STATUS="Stopped"
+						OPPSTATUS="Play"
+						OPPSTATUS2=""
+					elif [ "$state" = "pause" ]; then
+						NOTIFYSEND_STATUS="Paused"
+						OPPSTATUS="Play"
+						OPPSTATUS2="Stop"
+					elif [ "$state" = "play" ]; then
+						NOTIFYSEND_STATUS="Now Playing"
+						OPPSTATUS="Pause"
+						OPPSTATUS2="Stop"
+					fi
 				fi
 			else
-				if [ "$state" = "stop" ]; then
-					NOTIFYSEND_STATUS="Stopped"
-					OPPSTATUS="Play"
+				if [ "$UseNerdFont" = "true" ]; then
+					NOTIFYSEND_STATUS=""
+					OPPSTATUS=""
 					OPPSTATUS2=""
-				elif [ "$state" = "pause" ]; then
-					NOTIFYSEND_STATUS="Paused"
-					OPPSTATUS="Play"
-					OPPSTATUS2="Stop"
-				elif [ "$state" = "play" ]; then
-					NOTIFYSEND_STATUS="Now Playing"
-					OPPSTATUS="Pause"
-					OPPSTATUS2="Stop"
+				else
+					NOTIFYSEND_STATUS="Offline"
+					OPPSTATUS=""
+					OPPSTATUS2=""
 				fi
 			fi;;
 
@@ -533,6 +566,7 @@ pw_ReloadMetadata() {
 			ffmpeg -y -i "$filename" -an -vf scale=128:128 "$previewname" > /dev/null 2>&1;;
 
 		"All")
+			pw_ReloadMetadata OnlineStatus
 			pw_ReloadMetadata RefreshVariables
 			pw_ReloadMetadata Title
 			pw_ReloadMetadata Artist
@@ -547,6 +581,7 @@ pw_ReloadMetadata() {
 }
 
 pw_Refresh() {
+	pw_ReloadMetadata OnlineStatus
 	pw_ReloadMetadata RefreshVariables
 	pw_ReloadMetadata State
 
@@ -625,8 +660,16 @@ pw_MPDCommandButFiltered() {
 }
 
 pw_UserSelection() { 
-
-	if [ -z "$mpc_file" ]; then
+	
+	if [ "$pw_MPDIsOnline" = "false" ]; then
+		Notify_TitlePlay="$Notify_TitleOffline"
+		Notify_Line1Play=""
+		if [ "$(uname)" = "Darwin" ]; then
+			Notify_Line2Play="The Music Player Daemon is currently not running."
+		else
+			Notify_Line2Play=""
+		fi
+	elif [ -z "$mpc_file" ]; then
 		Notify_TitlePlay="$Notify_TitleStop"
 		Notify_Line1Play=""
 		if [ "$(uname)" = "Darwin" ]; then
@@ -730,7 +773,9 @@ pw_MenuOptions() {
 		"daemon")
 		# Sleep to mitigate some race conditions
 
-			if [ -z "$OPPSTATUS2" ]; then
+			if [ "$pw_MPDIsOnline" = "false" ]; then
+				mpd="Close"
+			elif [ -z "$OPPSTATUS2" ]; then
 				mpd=':'"$OPPSTATUS"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
 			else
 				mpd=':'"$OPPSTATUS:$OPPSTATUS2"'::seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade'
@@ -740,11 +785,21 @@ pw_MenuOptions() {
 				exit 0
 			fi
 	
+			if [ "$pw_MPDIsOnline" = "false" ]; then
+				if [ "$UseNerdFont" = "false" ]; then
+					DMENU_TITLE="Offline"
+				else
+					DMENU_TITLE="$NOTIFYSEND_STATUS Offline"
+				fi
+			elif [ -z "$mpc_file" ]; then
+				if [ "$UseNerdFont" = "false" ]; then
+					DMENU_TITLE="Stopped"
+				else
+					DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+				fi
 
-			if [ -z "$mpc_file" ]; then
-				DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
 			else
-				if [ $UseNerdFont = "false" ]; then
+				if [ "$UseNerdFont" = "false" ]; then
 					DMENU_TITLE="$NOTIFYSEND_STATUS: "'"'"$title"'"'" by $artist"
 				else
 					DMENU_TITLE="$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
@@ -804,7 +859,9 @@ EOF
 					prompt=$(printf "Cancel" | pw_SpawnMenu)
 				fi
 
-				pw_CLICommand "$SELECTED" "$prompt"
+				if [ "$prompt" != "Cancel" ]; then
+					pw_CLICommand "$SELECTED" "$prompt"
+				fi
 				return 0
 
 			elif [ -n "$INTEGER" ]; then
@@ -876,18 +933,30 @@ EOF
 				ForwardIcon="Next"
 			fi
 
-			if [ -z "$OPPSTATUS2" ]; then
+			if [ "$pw_MPDIsOnline" = "false" ]; then
+				mpd="Close"
+			elif [ -z "$OPPSTATUS2" ]; then
 				mpd="$PreviousIcon"':'"$OPPSTATUS"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
 
 			else
 				mpd="$PreviousIcon"':'"$OPPSTATUS:$OPPSTATUS2"':'"$ForwardIcon"':seek:setvol:single:random:repeat:consume:clear:update:shuffle:crossfade:Close'
 			fi
 
-			if [ -z "$mpc_file" ]; then
-				DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+			if [ "$pw_MPDIsOnline" = "false" ]; then
+				if [ "$UseNerdFont" = "false" ]; then
+					DMENU_TITLE="Offline"
+				else
+					DMENU_TITLE="$NOTIFYSEND_STATUS Offline"
+				fi
+			elif [ -z "$mpc_file" ]; then
+				if [ "$UseNerdFont" = "false" ]; then
+					DMENU_TITLE="Stopped"
+				else
+					DMENU_TITLE="$NOTIFYSEND_STATUS Stopped"
+				fi
 
 			else
-				if [ $UseNerdFont = "false" ]; then
+				if [ "$UseNerdFont" = "false" ]; then
 					DMENU_TITLE="$NOTIFYSEND_STATUS: "'"'"$title"'"'" by $artist"
 				else
 					DMENU_TITLE="$NOTIFYSEND_STATUS "'"'"$title"'"'" by $artist"
@@ -925,13 +994,28 @@ pw_PeriwinkleDaemon() {
 	previoussong_daemon="$currentsong_daemon"
 	currentstate2="$state"
 	previousstate2="$currentstate2"
+	pw_OnlineFuse="$pw_MPDIsOnline"
 
 	printf "[%s - INFO] You're now running Periwinkle as a daemon!\n" "$(date)"
 	printf "[%s - INFO] WARNING: This feature is still experimental.\n" "$(date)"
 	printf "[%s - INFO] Please open an issue at https://github.com/fluffeon/periwinkle/issues if you have problems.\n" "$(date)"
 
+	if [ "$pw_MPDIsOnline" = "false" ]; then
+		printf "[%s - WARN] The Music Player Daemon is currently not running. Check if it's running.\n" "$(date)"
+	fi
+
 	while true; do
 		sleep 0.1
+		if [ "$pw_OnlineFuse" != "$pw_MPDIsOnline" ] && [ "$pw_MPDIsOnline" = "false" ]; then
+			printf "[%s - WARN] The Music Player Daemon is currently not running. Check if it's running.\n" "$(date)"
+			pw_OnlineFuse=$pw_MPDIsOnline
+			pw_SpawnNotification_Shortcut
+		elif [ "$pw_OnlineFuse" != "$pw_MPDIsOnline" ] && [ "$pw_MPDIsOnline" = "true" ]; then
+			printf "[%s - INFO] The Music Player Daemon has started.\n" "$(date)"
+			pw_OnlineFuse=$pw_MPDIsOnline
+			pw_SpawnNotification_Shortcut
+		fi
+
 		if [ "$currentsong_daemon" != "$previoussong_daemon" ] || [ "$currentstate2" != "$previousstate2" ] && [ "$state" != "" ]; then
 			if [ -z "$mpc_file" ]; then
 				printf "[%s - INFO] $state: The playlist is stopped.\n" "$(date)"
@@ -959,7 +1043,15 @@ pw_PeriwinkleDaemon() {
 			done
 		fi
 
-		if [ -z "$mpc_file" ]; then
+		if [ "$pw_MPDIsOnline" = "false" ]; then
+			Notify_TitlePlay="$Notify_TitleOffline"
+			Notify_Line1Play=""
+			if [ "$(uname)" = "Darwin" ]; then
+				Notify_Line2Play="The Music Player Daemon is currently not running."
+			else
+				Notify_Line2Play=""
+			fi
+		elif [ -z "$mpc_file" ]; then
 			Notify_TitlePlay="$Notify_TitleStop"
 			Notify_Line1Play=""
 			if [ "$(uname)" = "Darwin" ]; then
@@ -1082,7 +1174,15 @@ pw_CLICommand() {
 		
 		"")
 
-		if [ -z "$mpc_file" ]; then
+		if [ "$pw_MPDIsOnline" = "false" ]; then
+			Notify_TitlePlay="$Notify_TitleOffline"
+			Notify_Line1Play=""
+			if [ "$(uname)" = "Darwin" ]; then
+				Notify_Line2Play="The Music Player Daemon is currently not running."
+			else
+				Notify_Line2Play=""
+			fi
+		elif [ -z "$mpc_file" ] && [ "$pw_MPDIsOnline" = "true" ]; then
 			Notify_TitlePlay="$Notify_TitleStop"
 			Notify_Line1Play=""
 			if [ "$(uname)" = "Darwin" ]; then
@@ -1090,11 +1190,11 @@ pw_CLICommand() {
 			else
 				Notify_Line2Play=""
 			fi
-		fi 
-		
+		fi
+
 		pw_SpawnNotification_Shortcut;;
 		
-		*) pw_Error UnknownCommand $1;;
+		*) pw_Error UnknownCommand "$1";;
 	esac
 }
 

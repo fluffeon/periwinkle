@@ -1,7 +1,7 @@
 [Unit]
 Description=Periwinkle
-Wants=display-manager.service mpd.service
-After=display-manager.service mpd.service
+Wants=mpd.service
+After=mpd.service
 BindsTo=mpd.service
 
 [Service]
@@ -13,4 +13,4 @@ Environment=daemonmode=true
 
 [Install]
 WantedBy=default.target
-Alias=periwinkle-daemon.service
+Alias=periwinkle.service
