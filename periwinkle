@@ -411,12 +411,12 @@ pw_SpawnNotification() {
 	# $5 = Extra Option (optional)
 
 	if [ "$(uname)" = "Darwin" ]; then
-		NotificationActionSelected="$(alerter -title "$1" -subtitle "$2" -message "$3" -contentImage "$4" -group 27072 -timeout "$(($Notify_Timeout / 1000))")"
+		NotificationActionSelected="$(alerter -title $1 -subtitle $2 -message $3 -contentImage $4 -group 27072 -timeout "$(($Notify_Timeout / 1000))")"
 	else
 		if [ -n "$5" ] || [ "$5" = "" ]; then
-			NotificationActionSelected="$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show "$5")"
+			NotificationActionSelected=$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i $4 --action open=Show $5)
 		else
-			NotificationActionSelected="$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show)"
+			NotificationActionSelected=$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show)
 		fi
 	fi
 
