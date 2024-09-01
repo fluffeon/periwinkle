@@ -37,6 +37,13 @@
 
 #Directory_MusicFolder=$HOME/Music
 
+# Which menu do you want to use?
+# You can choose between dmenu and wmenu.
+# Use dmenu if you're using X11 and wmenu if you're using Wayland.
+# This option does nothing on macOS
+
+#UseThisMenuProgram=dmenu
+
 # -----
 # APPEARANCE
 # -----
@@ -124,7 +131,7 @@
 # Down here is code!
 
 pw_Help() {
-	echo "Periwinkle - The cutest MPD client
+	pw_SendMessage Info "Periwinkle - The cutest MPD client
 
 	This is a CLI and also a semi-GUI client that can
 	be integrated into a DWM desktop by the use of
@@ -181,7 +188,7 @@ pw_Help() {
 }
 
 pw_AboutProgram() {
-	printf "
+	pw_SendMessage Info "
     Periwinkle - The cutest MPD client
     Version:
 
@@ -204,52 +211,52 @@ pw_AboutProgram() {
 	"
 }
 
-pw_Error() {
+pw_SendMessage() {
 	case $1 in
-		"UnknownCommand")
+		"ErrUnknownCommand")
 			printf "[%s - ERR] '%s' is not a known command >.<\n" "$(date)" "$2";;
 	
-		"InvalidInteger")
+		"ErrInvalidInteger")
 			printf "[%s - ERR] '%s' is not a valid integer -w-\n" "$(date)" "$2";;
 
-		"InvalidNumber")
+		"ErrInvalidNumber")
 			printf "[%s - ERR] '%s' is not a valid number -w-\n" "$(date)" "$2";;
 
-		"FewArguments")
+		"ErrFewArguments")
 			printf "[%s - ERR] Not enough arguments... ;w;\n" "$(date)" "$2";;
 
-		"ManyArguments")
+		"ErrManyArguments")
 			printf "[%s - ERR] T-That's too many arguments!! >w<\n" "$(date)" "$2";;
 
-		"WrongArguments")
+		"ErrWrongArguments")
 			printf "[%s - ERR] Wrong arguments for this command... :<\n" "$(date)" "$2";;
 
-		"PlaylistClear")
+		"ErrPlaylistClear")
 			printf "[%s - ERR] You can't %s if you have no songs in your queue or if the queue is stopped! >:3\n" "$(date)" "$2";;
 
-		"" | *)
-			printf "[%s - ERR] Something went wrong... o.O\n" "$(date)" "$2"
-			printf "[%s - ERR] If you see this error please open a issue report about it\n" "$(date)" "$2";;
-	esac
-	
-	return 1
+		"Warn")
+			printf "[%s - WARN]" "$(date)" 
+			;;
 
-}
+		"Info")
+			printf "[%s - INFO]" "$(date)" 
+			;;
 
-# Check if the necessary dependencies are installed
-pw_MissingDependency() {
-	case $cmd in
-		"notify-send")
-			printf "[%s - ERR] 'notify-send' (libnotify) is required but not found. Please install it.\n" "$(date)";;
-
-		"nc")
-			printf "[%s - ERR] Dependency missing: 'nc' (openbsd-netcat or gnu-netcat) is required but not found. Please install it.\n" "$(date)";;
-
-		*)
-			printf "[%s - ERR] Dependency missing: %s is required but not found. Please install it.\n" "$(date)" "$cmd";;
+		"Exception" | "" | *)
+			printf "[%s - ERR]" "$(date)" 
+			;;
 	esac
 
-	exit 1
+	case $1 in
+		"Info" | "Warn" | "Error" | "Exception")
+			if [ -n "$2" ]; then
+				printf " %s\n" "$2"
+			else
+				printf " Your message goes here.\n"
+			fi
+	esac
+
+	return
 }
 
 # Placeholder default check. Will be more sophisticated in the future.
@@ -268,7 +275,7 @@ pw_FillInTheBlanks() {
 	fi
 
 	if [ -z "$Notify_TitlePlay" ]; then
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			Notify_TitlePlay='%stateicon%'
 		else
 			Notify_TitlePlay='%stateicon% "%title%"'
@@ -276,7 +283,7 @@ pw_FillInTheBlanks() {
 	fi
 
 	if [ -z "$Notify_Line1Play" ]; then
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			Notify_Line1Play='%title%'
 		else
 			Notify_Line1Play='by %artist%'
@@ -284,7 +291,7 @@ pw_FillInTheBlanks() {
 	fi
 
 	if [ -z "$Notify_Line2Play" ]; then
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			Notify_Line2Play="%artist%""'"'s "%album%" %datep%'
 		else
 			Notify_Line2Play='from "%album%" %datep%'
@@ -292,7 +299,7 @@ pw_FillInTheBlanks() {
 	fi
 
 	if [ -z "$Notify_TitleStop" ]; then
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			Notify_TitleStop="Stopped"
 		else
 			Notify_TitleStop="%stateicon% Stopped"
@@ -300,7 +307,7 @@ pw_FillInTheBlanks() {
 	fi
 
 	if [ -z "$Notify_TitleOffline" ]; then
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			Notify_TitleOffline="Offline"
 		else
 			Notify_TitleOffline="%stateicon% Offline"
@@ -348,13 +355,19 @@ pw_FillInTheBlanks() {
 	fi
 
 	if [ -z "$UseNerdFont" ]; then
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			UseNerdFont=false
 		else
 			UseNerdFont=true
 		fi
-	elif [ "$UseNerdFont" = "true" ] && [ "$(uname)" = "Darwin" ]; then
-		printf "[%s - WARN] In macOS, Nerd Fonts are not supported on Periwinkle. Here be dragons.\n" "$(date)"
+	elif [ "$UseNerdFont" = "true" ] && [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
+		pw_SendMessage Warn "While using Periwinkle on macOS, Nerd Fonts are not supported. Here be dragons."
+	fi
+
+	if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
+		UseThisMenuProgram=dmenu-mac
+	elif [ -z "$UseThisMenuProgram" ] && [ "$pw_CurrentOperatingSystem" != "Darwin" ]; then
+		UseThisMenuProgram=dmenu
 	fi
 
 	Notify_TitlePlaySave=$Notify_TitlePlay
@@ -387,19 +400,18 @@ pw_CheckNumber() {
 		"inRange")
 			if ! pw_isNumberInRange "$1"; then
 				# Set the variable with the validated integer
-				pw_Error InvalidInteger "$1"
+				pw_SendMessage ErrInvalidInteger "$1"
 			fi;;
 
 		"isPositive")
 			if ! pw_isPositiveNumber "$1"; then
-				pw_Error InvalidNumber "$1"
+				pw_SendMessage ErrInvalidNumber "$1"
 			fi;;
 
 		*)
-			printf "[%s - ERR] %s\n" "$(date)" "$1"
-			printf "[%s - ERR] DEBUG INFO: Invalid arguments for this function\n" "$(date)"
-			printf "[%s - ERR] If you see this message, please open a issue about it.\n" "$(date)"
-			pw_Error;;
+			pw_SendMessage Error "$1"
+			pw_SendMessage Error "DEBUG INFO: Invalid arguments for this function" 
+			pw_SendMessage Error "If you see this message, please open a issue about it.";;
 	esac
 }
 
@@ -410,17 +422,34 @@ pw_SpawnNotification() {
 	# $4 = Icon
 	# $5 = Extra Option (optional)
 
-	if [ "$(uname)" = "Darwin" ]; then
-		NotificationActionSelected="$(alerter -title $1 -subtitle $2 -message $3 -contentImage $4 -group 27072 -timeout "$(($Notify_Timeout / 1000))")"
+	if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
+		NotificationActionSelected="$(alerter -title $1 \
+											  -subtitle $2 \
+											  -message $3 \
+											  -contentImage $4 \
+											  -group 27072 \
+											  -timeout "$(($Notify_Timeout / 1000))")"
 	else
 		if [ -n "$5" ] || [ "$5" = "" ]; then
-			NotificationActionSelected=$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i $4 --action open=Show $5)
+			NotificationActionSelected=$(notify-send -a "Periwinkle" \
+													 -t "$Notify_Timeout" \
+													 -u low \
+													 -r 27072 "$1" "$2\n$3" \
+													 -i $4 \
+													 --action open=Show $5)
 		else
-			NotificationActionSelected=$(notify-send -a "Periwinkle" -t "$Notify_Timeout" -u low -r 27072 "$1" "$2\n$3" -i "$4" --action open=Show)
+			NotificationActionSelected=$(notify-send -a "Periwinkle" \
+													 -t "$Notify_Timeout" \
+													 -u low \
+													 -r 27072 "$1" "$2\n$3" \
+													 -i "$4" \
+													 --action open=Show)
 		fi
 	fi
 
-	if [ -z "$NotificationActionSelected" ] || [ "$NotificationActionSelected" = "@TIMEOUT" ] || [ "$NotificationActionSelected" = "@CLOSED" ]; then
+	if    [ -z "$NotificationActionSelected" ] \
+	   || [ "$NotificationActionSelected" = "@TIMEOUT" ] \
+	   || [ "$NotificationActionSelected" = "@CLOSED" ]; then
 		return 0
 
 	elif [ -s /tmp/pw_daemonmode ]; then
@@ -635,13 +664,20 @@ pw_Refresh() {
 	return 0
 }
 
-pw_SpawnMenu() {
-	if [ "$(uname)" = "Darwin" ]; then
-		dmenu-mac -p "$DMENU_TITLE"
-	else
-		dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" -nb "$Color_Background" -nf "$Color_Foreground" -sb "$Color_SelectedBackground" -sf "$Color_SelectedForeground"
-	fi
-	return 0
+pw_SpawnMenu() {	
+	case $UseThisMenuProgram in
+		"dmenu-mac")
+			dmenu-mac -p "$DMENU_TITLE";;
+
+		"wmenu")
+			wmenu -i -p "$DMENU_TITLE" -N "$Color_Background" -n "$Color_Foreground" \
+				  -S "$Color_SelectedBackground" -s "$Color_SelectedForeground";;
+
+		"dmenu" | *)
+			dmenu "$Bar_Position" -i -p "$DMENU_TITLE" -fn "$Bar_Font" \
+				  -nb "$Color_Background" -nf "$Color_Foreground" -sb \
+				  "$Color_SelectedBackground" -sf "$Color_SelectedForeground";;			
+	esac
 }
 
 pw_MPDCommandButFiltered() {
@@ -664,7 +700,7 @@ pw_UserSelection() {
 	if [ "$pw_MPDIsOnline" = "false" ]; then
 		Notify_TitlePlay="$Notify_TitleOffline"
 		Notify_Line1Play=""
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			Notify_Line2Play="The Music Player Daemon is currently not running."
 		else
 			Notify_Line2Play=""
@@ -672,7 +708,7 @@ pw_UserSelection() {
 	elif [ -z "$mpc_file" ]; then
 		Notify_TitlePlay="$Notify_TitleStop"
 		Notify_Line1Play=""
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			Notify_Line2Play="The playlist is currently stopped."
 		else
 			Notify_Line2Play=""
@@ -835,7 +871,7 @@ pw_MenuOptions() {
 			esac
 
 			if [ -z "$INTEGER" ]; then
-				if [ "$(uname)" = "Darwin" ]; then
+				if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 					Darwin_InsertBoxDialog=$(cat <<EOF
 set userInput to display dialog "$DMENU_TITLE" default answer "" buttons {"Cancel", "OK"} default button "OK"
 
@@ -963,7 +999,6 @@ EOF
 				fi
 			fi
 
-			
 			prompt="$(printf '%s\n' "$mpd" | tr ':' '\n' | pw_SpawnMenu)"
 			pw_UserSelection "$prompt"
 			if [ -z "$prompt" ]; then
@@ -975,13 +1010,13 @@ EOF
 }
 
 pw_QuitDaemon() {
-	printf "[%s] Quitting...\n" "$(date)"
+	pw_SendMessage Info "Quitting..."
 	rm /tmp/pw_daemonmode
 	exit 0
 }
 
 pw_Nothing() {
-	printf ""
+	true
 }
 
 pw_PeriwinkleDaemon() {		
@@ -996,31 +1031,32 @@ pw_PeriwinkleDaemon() {
 	previousstate2="$currentstate2"
 	pw_OnlineFuse="$pw_MPDIsOnline"
 
-	printf "[%s - INFO] You're now running Periwinkle as a daemon!\n" "$(date)"
-	printf "[%s - INFO] WARNING: This feature is still experimental.\n" "$(date)"
-	printf "[%s - INFO] Please open an issue at https://github.com/fluffeon/periwinkle/issues if you have problems.\n" "$(date)"
+	pw_SendMessage Info "You're now running Periwinkle as a daemon!"
+	pw_SendMessage Info "This feature is still experimental."
+	pw_SendMessage Info "Please open an issue at https://github.com/fluffeon/periwinkle/issues if you have problems."
 
 	if [ "$pw_MPDIsOnline" = "false" ]; then
-		printf "[%s - WARN] The Music Player Daemon is currently not running. Check if it's running.\n" "$(date)"
+		pw_SendMessage Warn "The Music Player Daemon is currently not running. Check if it's running."
 	fi
 
 	while true; do
 		sleep 0.1
 		if [ "$pw_OnlineFuse" != "$pw_MPDIsOnline" ] && [ "$pw_MPDIsOnline" = "false" ]; then
-			printf "[%s - WARN] The Music Player Daemon is currently not running. Check if it's running.\n" "$(date)"
+			pw_SendMessage Warn "The Music Player Daemon is currently not running. Check if it's running."
 			pw_OnlineFuse=$pw_MPDIsOnline
 			pw_SpawnNotification_Shortcut
 		elif [ "$pw_OnlineFuse" != "$pw_MPDIsOnline" ] && [ "$pw_MPDIsOnline" = "true" ]; then
-			printf "[%s - INFO] The Music Player Daemon has started.\n" "$(date)"
+			pw_SendMessage Info "The Music Player Daemon has started."
 			pw_OnlineFuse=$pw_MPDIsOnline
 			pw_SpawnNotification_Shortcut
 		fi
 
-		if [ "$currentsong_daemon" != "$previoussong_daemon" ] || [ "$currentstate2" != "$previousstate2" ] && [ "$state" != "" ]; then
+		if [ "$currentsong_daemon" != "$previoussong_daemon" ] \
+		|| [ "$currentstate2" != "$previousstate2" ] && [ "$state" != "" ]; then
 			if [ -z "$mpc_file" ]; then
-				printf "[%s - INFO] $state: The playlist is stopped.\n" "$(date)"
+				pw_SendMessage Info "$state: The playlist is stopped."
 			else
-				printf "[%s - INFO] $state: '$title'"' by '"$artist\n" "$(date)"
+				pw_SendMessage Info "$state: $title by $artist"
 			fi
 			sleep 0.1
 			pw_SpawnNotification_Shortcut
@@ -1030,7 +1066,7 @@ pw_PeriwinkleDaemon() {
 
 		pw_Refresh
 		sleep 0.5
-		if [ "$(uname)" = "Darwin" ]; then
+		if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 			pw_Counter=0
 
 			while true; do
@@ -1046,7 +1082,7 @@ pw_PeriwinkleDaemon() {
 		if [ "$pw_MPDIsOnline" = "false" ]; then
 			Notify_TitlePlay="$Notify_TitleOffline"
 			Notify_Line1Play=""
-			if [ "$(uname)" = "Darwin" ]; then
+			if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 				Notify_Line2Play="The Music Player Daemon is currently not running."
 			else
 				Notify_Line2Play=""
@@ -1054,7 +1090,7 @@ pw_PeriwinkleDaemon() {
 		elif [ -z "$mpc_file" ]; then
 			Notify_TitlePlay="$Notify_TitleStop"
 			Notify_Line1Play=""
-			if [ "$(uname)" = "Darwin" ]; then
+			if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 				Notify_Line2Play="The playlist is currently stopped."
 			else
 				Notify_Line2Play=""
@@ -1084,7 +1120,16 @@ pw_Print() {
 
 	# Trim leading space and output the captured input arguments
 	input_arguments="${input_arguments# }"
-	output_text=$(printf "%s" "$input_arguments" | awk -v titlevar="$title" -v artistvar="$artist" -v albumvar="$album" -v datevar="$unprocesseddate" -v datepvar="$date" -v statevar="$state" -v stateiconvar="$NOTIFYSEND_STATUS" -v songidvar="$songid" -v filenamevar="$mpc_file" -v dirvar="$filename" '{
+	output_text=$(printf "%s" "$input_arguments" | awk -v titlevar="$title" \
+													   -v artistvar="$artist" \
+													   -v albumvar="$album" \
+													   -v datevar="$unprocesseddate" \
+													   -v datepvar="$date" \
+													   -v statevar="$state" \
+													   -v stateiconvar="$NOTIFYSEND_STATUS" \
+													   -v songidvar="$songid" \
+													   -v filenamevar="$mpc_file" \
+													   -v dirvar="$filename" '{
 	 gsub(/%title%/, titlevar);
 	  gsub(/%artist%/, artistvar);
 	  gsub(/%album%/, albumvar);
@@ -1106,7 +1151,8 @@ pw_CLICommand() {
 	case $1 in
 		"help") pw_Help;;
 
-		"pause" | "play" | "prev" | "previous" | "backward" | "stop" | "next" | "forward")
+		"pause" | "play" | "prev" | "previous" \
+		| "backward" | "stop" | "next" | "forward")
 			CLI=True
 			pw_UserSelection "$1";;
 
@@ -1118,31 +1164,33 @@ pw_CLICommand() {
 			if [ -z "$2" ]; then
 				pw_MPDCommandButFiltered "$*";
 			else
-				pw_Error ManyArguments
+				pw_SendMessage ErrManyArguments
 			fi;;
 
-		"add" | "rm" | "find" | "save" | "setvol" | "list" | "crossfade" | "single" | "random" | "consume" | "repeat" | "delete" | "direct")
+		"add" | "rm" | "find" | "save" | "setvol" \
+		| "list" | "crossfade" | "single" | "random" \
+		| "consume" | "repeat" | "delete" | "direct")
 			if [ "$1" = "direct" ]; then
 				pw_MPDCommandButFiltered "$2" "$3" "$4" "$5"
 			elif [ -n "$2" ]; then
 				pw_MPDCommandButFiltered "$1" "$2" "$3" "$4" "$5"
 			else
-				pw_Error FewArguments
+				pw_SendMessage ErrFewArguments
 			fi;;
 		"seek")
 			if [ -n "$3" ]; then
-				pw_Error ManyArguments
+				pw_SendMessage ErrManyArguments
 			fi
 
 			if [ -z "$songid" ]; then
-				pw_Error PlaylistClear "$1"
+				pw_SendMessage ErrPlaylistClear "$1"
 			fi
 
 			if [ -n "$2" ]; then
 				MINIMUMVAL=-1 MAXIMUMVAL=2147483648 pw_CheckNumber "$2" inRange
 				pw_MPDCommandButFiltered seek "$songid" "$2"
 			else
-				pw_Error FewArguments
+				pw_SendMessage ErrFewArguments
 			fi;;
 
 		"format" | "print")
@@ -1155,18 +1203,18 @@ pw_CLICommand() {
 
 		"statsfornerds")
 			pw_Refresh SetAlbumCover
-			pw_SetAlbumCover
-			printf '[%s - INFO] Output: \n' "$(date)"
-			printf "[%s - INFO] %s\n" "$(date)" "$stats"
-			printf "[%s - INFO] Preview Dir: %s\n" "$(date)" "$Directory_AlbumCover"
-			printf "[%s - INFO] Filename: %s\n" "$(date)" "$filename" 
-			printf "[%s - INFO] Preview Name: %s\n" "$(date)" "$previewname" 
-			printf "[%s - INFO] Title: %s\n" "$(date)" "$title" 
-			printf "[%s - INFO] Artist: %s\n" "$(date)" "$artist"
-			printf "[%s - INFO] Album: %s\n" "$(date)" "$album"
-			printf "[%s - INFO] Date: %s\n" "$(date)" "$date"
-			printf "[%s - INFO] Hash: %s\n" "$(date)" "$UseHash"
-			printf "[%s - INFO] DMENU SETTINGS: %s %s %s %s %s %s %s\n" "$(date)" "$Bar_Position" "$DMENU_TITLE" "$Bar_Font" "$Color_Background" "$Color_Foreground" "$Color_SelectedBackground" "$Color_SelectedForeground";;
+			pw_SendMessage Info "Output:"
+			pw_SendMessage Info "$stats"
+			pw_SendMessage Info "Preview Dir: $Directory_AlbumCover"
+			pw_SendMessage Info "Filename: $filename" 
+			pw_SendMessage Info "Preview Name: $previewname" 
+			pw_SendMessage Info "Title: $title" 
+			pw_SendMessage Info "Artist: $artist"
+			pw_SendMessage Info "Album: $album"
+			pw_SendMessage Info "Date: $date"
+			pw_SendMessage Info "Hash: $UseHash"
+			pw_SendMessage Info "DMENU SETTINGS: $Bar_Position $DMENU_TITLE $Bar_Font $Color_Background \
+												 $Color_Foreground $Color_SelectedBackground $Color_SelectedForeground";;
 
 		"console") nc "$MPD_Host" "$MPD_Port";;
 		
@@ -1177,7 +1225,7 @@ pw_CLICommand() {
 		if [ "$pw_MPDIsOnline" = "false" ]; then
 			Notify_TitlePlay="$Notify_TitleOffline"
 			Notify_Line1Play=""
-			if [ "$(uname)" = "Darwin" ]; then
+			if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 				Notify_Line2Play="The Music Player Daemon is currently not running."
 			else
 				Notify_Line2Play=""
@@ -1185,7 +1233,7 @@ pw_CLICommand() {
 		elif [ -z "$mpc_file" ] && [ "$pw_MPDIsOnline" = "true" ]; then
 			Notify_TitlePlay="$Notify_TitleStop"
 			Notify_Line1Play=""
-			if [ "$(uname)" = "Darwin" ]; then
+			if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 				Notify_Line2Play="The playlist is currently stopped."
 			else
 				Notify_Line2Play=""
@@ -1194,17 +1242,41 @@ pw_CLICommand() {
 
 		pw_SpawnNotification_Shortcut;;
 		
-		*) pw_Error UnknownCommand "$1";;
+		*) pw_SendMessage ErrUnknownCommand "$1";;
 	esac
 }
 
-if [ "$(uname)" = "Darwin" ]; then
+pw_CurrentOperatingSystem=$(uname)
+
+#printf "$pw_CurrentOperatingSystem" | grep BSD
+#
+#if [ $? -eq 1 ]; then
+#	case "$pw_CurrentOperatingSystem" in
+#		"Linux" | "SunOS" | "Darwin")
+#			true;;
+#		*)
+#			pw_SendMessage Warn "Your operating system ($pw_CurrentOperatingSystem) is not on the \
+#								 list of known operating systems supported by Periwinkle, here be dragons.";;
+#	esac
+#fi
+
+# Core dependencies
+pw_DependencyList="nc awk ffmpeg uname"
+
+# OS-specific dependencies
+if [ "$pw_CurrentOperatingSystem" = "Darwin" ]; then
 	alias sha256sum="shasum -a 256"
 	alias sha512sum="shasum -a 512"
 	alias md5sum="md5"
-	pw_DependencyList="nc awk alerter dmenu-mac ffmpeg uname"
+	pw_DependencyList="$pw_DependencyList alerter dmenu-mac"
 else
-	pw_DependencyList="nc awk notify-send dmenu ffmpeg uname"
+	pw_DependencyList="$pw_DependencyList notify-send"
+fi
+
+if [ "$UseThisMenuProgram" = "wmenu" ] && [ "$pw_CurrentOperatingSystem" != "Darwin" ]; then
+	pw_DependencyList="$pw_DependencyList wmenu"
+elif [ "$UseThisMenuProgram" = "dmenu" ] && [ "$pw_CurrentOperatingSystem" != "Darwin" ]; then
+	pw_DependencyList="$pw_DependencyList dmenu"
 fi
 
 pw_DependencyListLen=${#pw_DependencyList}
@@ -1222,7 +1294,8 @@ while [ "$pw_PositionedIn" -lt "$pw_DependencyListLen" ]; do
 	if [ "$pw_CurrentChar" = " " ] || [ $pw_PositionedIn -eq $pw_DependencyListLen ]; then
 		for cmd in $pw_AuxiliarAppend; do
     		if ! command -v "$cmd" > /dev/null 2>&1; then
-				pw_MissingDependency
+				pw_SendMessage Error "Missing dependency: $cmd"
+				pw_ThereIsOneDependencyMissing="true"
     		fi
 		done
 		pw_AuxiliarAppend=""
@@ -1231,6 +1304,10 @@ while [ "$pw_PositionedIn" -lt "$pw_DependencyListLen" ]; do
 	fi
 
 done
+
+if [ "$pw_ThereIsOneDependencyMissing" = "true" ]; then
+	exit 1
+fi
 
 pw_FillInTheBlanks
 
